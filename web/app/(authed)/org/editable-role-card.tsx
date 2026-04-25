@@ -199,11 +199,8 @@ export function EditableRoleCard({
                 !confirm(`Delete role "${role.title}"? This cannot be undone.`)
               )
                 return;
-              try {
-                await deleteRole(fd);
-              } catch (e) {
-                alert((e as Error).message);
-              }
+              const result = await deleteRole(fd);
+              if (!result.ok) alert(result.error);
             }}
             className="ml-auto inline"
           >
@@ -232,6 +229,10 @@ function AssignForm({
   onClose: () => void;
 }) {
   const [externalIndividual, setExternalIndividual] = useState(false);
+  const [status, setStatus] = useState<
+    "Candidate" | "Planned" | "Current" | "Past"
+  >("Candidate");
+  const showEndDate = status !== "Current";
 
   return (
     <form
@@ -292,7 +293,10 @@ function AssignForm({
         <select
           name="status"
           required
-          defaultValue="Candidate"
+          value={status}
+          onChange={(e) =>
+            setStatus(e.target.value as typeof status)
+          }
           className={inputClass}
         >
           <option value="Candidate">Candidate</option>
@@ -303,24 +307,46 @@ function AssignForm({
         <input
           name="startDate"
           type="date"
-          placeholder="Start date"
+          required={status !== "Candidate"}
           className={inputClass}
+          aria-label={status === "Past" ? "Start date" : "Posted-in date"}
         />
       </div>
 
-      <div className="grid grid-cols-2 gap-2">
-        <input
-          name="endDate"
-          type="date"
-          placeholder="End date (optional)"
-          className={inputClass}
-        />
+      {showEndDate && (
+        <div className="grid grid-cols-2 gap-2">
+          <input
+            name="endDate"
+            type="date"
+            required={status === "Past"}
+            placeholder={
+              status === "Past" ? "End date" : "Expected end (optional)"
+            }
+            className={inputClass}
+          />
+          <input
+            name="notes"
+            placeholder="Notes (optional)"
+            className={inputClass}
+          />
+        </div>
+      )}
+
+      {!showEndDate && (
         <input
           name="notes"
           placeholder="Notes (optional)"
           className={inputClass}
         />
-      </div>
+      )}
+
+      <p className="chrome-mono text-[10px] text-[var(--muted-foreground)] leading-snug">
+        {status === "Current"
+          ? "Currently on the job — no end date needed. Switch to Past when they move out."
+          : status === "Past"
+            ? "Historical posting — both start and end dates required."
+            : "Forward-looking. End date is optional; if blank, the timeline projects the role's standard tenure."}
+      </p>
 
       <div className="flex gap-1 pt-1">
         <button

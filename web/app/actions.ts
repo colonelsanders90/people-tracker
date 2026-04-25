@@ -61,6 +61,14 @@ function level(value: FormDataEntryValue | null): Level {
   return v as Level;
 }
 
+/**
+ * Server Action result shape for actions that may fail in expected ways
+ * (FK guards, referenced rows, etc). Returning a plain object preserves the
+ * error message across the client/server boundary — Next.js otherwise strips
+ * `Error.message` from thrown errors in production.
+ */
+export type ActionResult = { ok: true } | { ok: false; error: string };
+
 function fanoutPaths(...extra: string[]) {
   for (const p of [
     "/",
@@ -208,24 +216,25 @@ export async function renameUnit(formData: FormData) {
   fanoutPaths();
 }
 
-export async function deleteUnit(formData: FormData) {
+export async function deleteUnit(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = num(formData.get("id"));
-  if (id == null) throw new Error("id is required");
+  if (id == null) return { ok: false, error: "id is required" };
 
-  // Safety: refuse if any roles still reference this unit
   const [{ c }] = await db
     .select({ c: count() })
     .from(roles)
     .where(eq(roles.unitId, id));
   if (c > 0) {
-    throw new Error(
-      `Cannot delete: ${c} role${c === 1 ? "" : "s"} still belong to this branch. Delete the roles first.`,
-    );
+    return {
+      ok: false,
+      error: `Can't delete this branch — it still has ${c} role${c === 1 ? "" : "s"}. Remove the roles first.`,
+    };
   }
 
   await db.delete(units).where(eq(units.id, id));
   fanoutPaths();
+  return { ok: true };
 }
 
 // ---------------------------------------------------------------------------
@@ -270,24 +279,25 @@ export async function updateRole(formData: FormData) {
   fanoutPaths(`/roles/${id}`);
 }
 
-export async function deleteRole(formData: FormData) {
+export async function deleteRole(formData: FormData): Promise<ActionResult> {
   await requireAdmin();
   const id = num(formData.get("id"));
-  if (id == null) throw new Error("id is required");
+  if (id == null) return { ok: false, error: "id is required" };
 
-  // Safety: refuse if any postings reference this role
   const [{ c }] = await db
     .select({ c: count() })
     .from(postings)
     .where(eq(postings.roleId, id));
   if (c > 0) {
-    throw new Error(
-      `Cannot delete: ${c} posting${c === 1 ? "" : "s"} reference this role. Delete the postings first.`,
-    );
+    return {
+      ok: false,
+      error: `Can't delete this role — ${c} posting${c === 1 ? "" : "s"} still reference it. Remove the postings on Admin → Postings first.`,
+    };
   }
 
   await db.delete(roles).where(eq(roles.id, id));
   fanoutPaths();
+  return { ok: true };
 }
 
 export async function toggleRoleVacancy(formData: FormData) {
@@ -335,21 +345,25 @@ export async function updateIndividual(formData: FormData) {
   fanoutPaths(`/individuals/${id}`);
 }
 
-export async function deleteIndividual(formData: FormData) {
+export async function deleteIndividual(
+  formData: FormData,
+): Promise<ActionResult> {
   await requireAdmin();
   const id = num(formData.get("id"));
-  if (id == null) throw new Error("id is required");
+  if (id == null) return { ok: false, error: "id is required" };
 
   const [{ c }] = await db
     .select({ c: count() })
     .from(postings)
     .where(eq(postings.individualId, id));
   if (c > 0) {
-    throw new Error(
-      `Cannot delete: ${c} posting${c === 1 ? "" : "s"} reference this person. Delete the postings first.`,
-    );
+    return {
+      ok: false,
+      error: `Can't delete this person — ${c} posting${c === 1 ? "" : "s"} reference them. Remove the postings on Admin → Postings first.`,
+    };
   }
 
   await db.delete(individuals).where(eq(individuals.id, id));
   fanoutPaths();
+  return { ok: true };
 }

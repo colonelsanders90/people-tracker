@@ -21,6 +21,10 @@ export function PostingForm({
 }) {
   const [externalIndividual, setExternalIndividual] = useState(false);
   const [externalRole, setExternalRole] = useState(false);
+  const [status, setStatus] = useState<
+    "Candidate" | "Planned" | "Current" | "Past"
+  >("Candidate");
+  const showEndDate = status !== "Current";
 
   return (
     <form action={action} className="grid md:grid-cols-2 gap-4">
@@ -117,13 +121,14 @@ export function PostingForm({
           id="status"
           name="status"
           required
-          defaultValue="Candidate"
+          value={status}
+          onChange={(e) => setStatus(e.target.value as typeof status)}
           className={inputClass}
         >
-          <option value="Past">Past</option>
-          <option value="Current">Current</option>
-          <option value="Planned">Planned</option>
           <option value="Candidate">Candidate</option>
+          <option value="Planned">Planned</option>
+          <option value="Current">Current</option>
+          <option value="Past">Past</option>
         </select>
       </div>
 
@@ -131,27 +136,41 @@ export function PostingForm({
 
       <div className="space-y-1.5">
         <label htmlFor="startDate" className="overline">
-          Start date
+          {status === "Past" ? "Start date" : "Posted-in date"}
         </label>
         <input
           id="startDate"
           name="startDate"
           type="date"
+          required={status !== "Candidate"}
           className={inputClass}
         />
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="endDate" className="overline">
-          End date
-        </label>
-        <input
-          id="endDate"
-          name="endDate"
-          type="date"
-          className={inputClass}
-        />
-      </div>
+      {showEndDate ? (
+        <div className="space-y-1.5">
+          <label htmlFor="endDate" className="overline">
+            End date{" "}
+            <span className="text-[var(--muted-foreground)] normal-case tracking-normal">
+              {status === "Past" ? "(required)" : "(optional)"}
+            </span>
+          </label>
+          <input
+            id="endDate"
+            name="endDate"
+            type="date"
+            required={status === "Past"}
+            className={inputClass}
+          />
+        </div>
+      ) : (
+        <div className="space-y-1.5 flex flex-col justify-end">
+          <p className="chrome-mono text-[10px] text-[var(--muted-foreground)] leading-snug pb-2">
+            Currently on the job — no end date needed. Switch the status to
+            Past when they move out.
+          </p>
+        </div>
+      )}
 
       <div className="space-y-1.5 md:col-span-2">
         <label htmlFor="notes" className="overline">

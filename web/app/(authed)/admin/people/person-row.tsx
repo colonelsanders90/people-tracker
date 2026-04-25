@@ -131,19 +131,14 @@ export function PersonRow({
             action={async (fd) => {
               if (
                 !confirm(
-                  `Delete ${person.name}? ${
-                    postingCount > 0
-                      ? `Has ${postingCount} posting(s) — server will refuse.`
-                      : "This cannot be undone."
-                  }`,
+                  postingCount > 0
+                    ? `${person.name} has ${postingCount} posting(s). Remove those first via Admin → Postings, then come back. Continue anyway?`
+                    : `Delete ${person.name}? This cannot be undone.`,
                 )
               )
                 return;
-              try {
-                await deleteIndividual(fd);
-              } catch (e) {
-                alert((e as Error).message);
-              }
+              const result = await deleteIndividual(fd);
+              if (!result.ok) alert(result.error);
             }}
             className="inline"
           >

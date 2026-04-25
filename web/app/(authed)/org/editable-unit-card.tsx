@@ -129,15 +129,12 @@ export function EditableUnitCard({
                   action={async (fd) => {
                     if (
                       !confirm(
-                        `Delete branch "${unit.name}"? Roles must be removed first.`,
+                        `Delete branch "${unit.name}"? Its roles must be removed first.`,
                       )
                     )
                       return;
-                    try {
-                      await deleteUnit(fd);
-                    } catch (e) {
-                      alert((e as Error).message);
-                    }
+                    const result = await deleteUnit(fd);
+                    if (!result.ok) alert(result.error);
                   }}
                   className="inline"
                 >

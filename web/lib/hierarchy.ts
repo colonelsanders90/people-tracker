@@ -11,6 +11,8 @@ export function buildUnitTree(units: Unit[], roles: Role[]): UnitNode[] {
     byId.set(u.id, { ...u, children: [], roles: [] });
   }
   for (const r of roles) {
+    // External roles (unitId === null) don't belong to the internal tree.
+    if (r.unitId == null) continue;
     byId.get(r.unitId)?.roles.push(r);
   }
   const roots: UnitNode[] = [];

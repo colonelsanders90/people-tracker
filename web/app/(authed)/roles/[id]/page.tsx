@@ -58,8 +58,9 @@ export default async function RoleViewPage(props: PageProps<"/roles/[id]">) {
           )}
         </div>
         <div className="flex flex-wrap gap-x-3 gap-y-1 chrome-mono text-[11px] text-[var(--muted-foreground)] mt-2">
-          <span>{role.unit.name}</span>
+          <span>{role.unit?.name ?? role.externalUnit ?? "External"}</span>
           <span>· {role.level}</span>
+          {role.isExternal && <span>· External</span>}
           {role.specialisation && <span>· {role.specialisation}</span>}
         </div>
       </header>
@@ -148,13 +149,13 @@ export default async function RoleViewPage(props: PageProps<"/roles/[id]">) {
               <span className="text-[var(--foreground)] font-medium">
                 {role.title}
               </span>{" "}
-              · {role.unit.name}
+              · {role.unit?.name ?? role.externalUnit ?? "External"}
             </p>
             <OrgChart
               tree={tree}
               incumbents={incumbents}
               highlightRoleId={role.id}
-              highlightUnitId={role.unit.id}
+              highlightUnitId={role.unit?.id}
             />
           </section>
         </aside>

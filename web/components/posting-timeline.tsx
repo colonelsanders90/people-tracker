@@ -105,7 +105,7 @@ export function PostingTimeline({
 
             const label =
               mode === "individual"
-                ? `${p.role.title} · ${p.role.unit.name}`
+                ? `${p.role.title} · ${p.role.unit?.name ?? p.role.externalUnit ?? "External"}`
                 : p.individual.name;
             const href =
               mode === "individual"

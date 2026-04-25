@@ -2,10 +2,22 @@ import { eq, asc, and, inArray } from "drizzle-orm";
 import { db, units, roles, individuals, postings } from "./db";
 import type { Individual, Posting, Role, Unit } from "./db/schema";
 
+/**
+ * For external roles, role.unit is null and role.externalUnit holds the
+ * sub-unit text (e.g. "DPLD"). Use `roleUnitLabel()` for display.
+ */
+export type RoleWithUnit = Role & { unit: Unit | null };
+
 export type PostingWithRelations = Posting & {
-  role: Role & { unit: Unit };
+  role: RoleWithUnit;
   individual: Individual;
 };
+
+/** Display label for a role's unit — internal unit name or external text. */
+export function roleUnitLabel(role: RoleWithUnit): string {
+  if (role.unit) return role.unit.name;
+  return role.externalUnit ?? "External";
+}
 
 export async function getAllUnits(): Promise<Unit[]> {
   return db.select().from(units).orderBy(asc(units.level), asc(units.name));
@@ -28,13 +40,11 @@ export async function getIndividual(id: number): Promise<Individual | null> {
   return rows[0] ?? null;
 }
 
-export async function getRole(
-  id: number,
-): Promise<(Role & { unit: Unit }) | null> {
+export async function getRole(id: number): Promise<RoleWithUnit | null> {
   const rows = await db
     .select()
     .from(roles)
-    .innerJoin(units, eq(roles.unitId, units.id))
+    .leftJoin(units, eq(roles.unitId, units.id))
     .where(eq(roles.id, id))
     .limit(1);
   if (!rows[0]) return null;
@@ -48,7 +58,7 @@ export async function getPostingsForIndividual(
     .select()
     .from(postings)
     .innerJoin(roles, eq(postings.roleId, roles.id))
-    .innerJoin(units, eq(roles.unitId, units.id))
+    .leftJoin(units, eq(roles.unitId, units.id))
     .innerJoin(individuals, eq(postings.individualId, individuals.id))
     .where(eq(postings.individualId, individualId))
     .orderBy(asc(postings.startDate));
@@ -66,7 +76,7 @@ export async function getPostingsForRole(
     .select()
     .from(postings)
     .innerJoin(roles, eq(postings.roleId, roles.id))
-    .innerJoin(units, eq(roles.unitId, units.id))
+    .leftJoin(units, eq(roles.unitId, units.id))
     .innerJoin(individuals, eq(postings.individualId, individuals.id))
     .where(eq(postings.roleId, roleId))
     .orderBy(asc(postings.startDate));
@@ -82,7 +92,7 @@ export async function getAllPostings(): Promise<PostingWithRelations[]> {
     .select()
     .from(postings)
     .innerJoin(roles, eq(postings.roleId, roles.id))
-    .innerJoin(units, eq(roles.unitId, units.id))
+    .leftJoin(units, eq(roles.unitId, units.id))
     .innerJoin(individuals, eq(postings.individualId, individuals.id))
     .orderBy(asc(postings.startDate));
   return rows.map((r) => ({

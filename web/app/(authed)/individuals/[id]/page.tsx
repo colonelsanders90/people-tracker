@@ -87,7 +87,12 @@ export default async function IndividualViewPage(
                       </Link>
                       <span className="text-[var(--muted-foreground)]">
                         {" "}
-                        · {p.role.unit.name} · {p.role.level}
+                        · {p.role.unit?.name ?? p.role.externalUnit ?? "External"} · {p.role.level}
+                        {p.role.isExternal && (
+                          <span className="ml-1 chrome-mono text-[10px]">
+                            (external)
+                          </span>
+                        )}
                       </span>
                       {(p.startDate || p.endDate) && (
                         <div className="chrome-mono text-[10px] text-[var(--muted-foreground)] mt-1">
@@ -122,7 +127,7 @@ export default async function IndividualViewPage(
                       </Link>
                       <span className="text-[var(--muted-foreground)]">
                         {" "}
-                        · {p.role.unit.name}
+                        · {p.role.unit?.name ?? p.role.externalUnit ?? "External"}
                       </span>
                       <span className="chrome-mono text-[10px] text-[var(--muted-foreground)] ml-2">
                         {p.startDate} → {p.endDate}
@@ -144,14 +149,14 @@ export default async function IndividualViewPage(
                 <span className="text-[var(--foreground)] font-medium">
                   {current.role.title}
                 </span>{" "}
-                · {current.role.unit.name}
+                · {current.role.unit?.name ?? current.role.externalUnit ?? "External"}
               </p>
             )}
             <OrgChart
               tree={tree}
               incumbents={incumbents}
               highlightRoleId={current?.role.id}
-              highlightUnitId={current?.role.unit.id}
+              highlightUnitId={current?.role.unit?.id}
             />
           </section>
         </aside>

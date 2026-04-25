@@ -3,13 +3,17 @@
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
+import type { Role } from "@/lib/auth";
+import { signOut } from "@/app/auth-actions";
 
-const links = [
+type Link = { href: string; label: string; adminOnly?: boolean };
+
+const links: Link[] = [
   { href: "/", label: "Dashboard" },
   { href: "/org", label: "Org Structure" },
   { href: "/individuals", label: "Individuals" },
   { href: "/roles", label: "Roles" },
-  { href: "/admin", label: "Admin" },
+  { href: "/admin", label: "Admin", adminOnly: true },
 ];
 
 function isActive(pathname: string, href: string) {
@@ -17,8 +21,9 @@ function isActive(pathname: string, href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-export function Sidebar() {
+export function Sidebar({ role }: { role: Role }) {
   const pathname = usePathname() ?? "/";
+  const visible = links.filter((l) => !l.adminOnly || role === "admin");
 
   return (
     <>
@@ -39,7 +44,7 @@ export function Sidebar() {
         </div>
 
         <nav className="flex-1 p-3">
-          {links.map((l) => {
+          {visible.map((l) => {
             const active = isActive(pathname, l.href);
             return (
               <Link
@@ -60,8 +65,27 @@ export function Sidebar() {
           })}
         </nav>
 
-        <div className="px-5 py-4 border-t border-white/10 text-[10px] tracking-wider uppercase text-white/50 font-mono-chrome">
-          v0.1 · Prototype
+        <div className="px-5 py-4 border-t border-white/10 space-y-2">
+          <div className="flex items-center gap-2 chrome-mono text-[10px] uppercase tracking-wider text-white/60">
+            <span
+              className="inline-block w-1.5 h-1.5 rounded-full"
+              style={{
+                background:
+                  role === "admin"
+                    ? "var(--raid-blue-light)"
+                    : "rgba(255,255,255,0.4)",
+              }}
+            />
+            {role === "admin" ? "HR Officer" : "Viewer"}
+          </div>
+          <form action={signOut}>
+            <button
+              type="submit"
+              className="chrome-mono text-[10px] text-white/60 hover:text-white transition"
+            >
+              Sign out
+            </button>
+          </form>
         </div>
       </aside>
 
@@ -76,9 +100,17 @@ export function Sidebar() {
             className="h-7 w-auto"
           />
           <span className="overline-on-dark">Manpower Tracker</span>
+          <form action={signOut} className="ml-auto">
+            <button
+              type="submit"
+              className="chrome-mono text-[10px] text-white/70"
+            >
+              Sign out
+            </button>
+          </form>
         </div>
         <nav className="flex gap-1 px-3 py-2 overflow-x-auto">
-          {links.map((l) => {
+          {visible.map((l) => {
             const active = isActive(pathname, l.href);
             return (
               <Link

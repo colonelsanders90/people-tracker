@@ -57,10 +57,11 @@ export default async function AdminPage() {
             <select id="roleId" name="roleId" required className={selectClass}>
               <option value="">Select a role…</option>
               {roles.map((r) => {
-                const u = unitById.get(r.unitId);
+                const u = r.unitId == null ? null : unitById.get(r.unitId);
+                const unitLabel = u?.name ?? r.externalUnit ?? "External";
                 return (
                   <option key={r.id} value={r.id}>
-                    {r.title} — {u?.name} ({r.level})
+                    {r.title} — {unitLabel} ({r.level})
                   </option>
                 );
               })}
@@ -149,7 +150,7 @@ export default async function AdminPage() {
                   <Td>
                     {p.role.title}{" "}
                     <span className="text-[var(--muted-foreground)]">
-                      · {p.role.unit.name}
+                      · {p.role.unit?.name ?? p.role.externalUnit ?? "External"}
                     </span>
                   </Td>
                   <Td>
@@ -193,7 +194,8 @@ export default async function AdminPage() {
             </thead>
             <tbody>
               {roles.map((r, idx) => {
-                const unit = unitById.get(r.unitId);
+                const unit =
+                  r.unitId == null ? null : unitById.get(r.unitId);
                 return (
                   <tr
                     key={r.id}
@@ -202,7 +204,9 @@ export default async function AdminPage() {
                     }`}
                   >
                     <Td>{r.title}</Td>
-                    <Td muted>{unit?.name}</Td>
+                    <Td muted>
+                      {unit?.name ?? r.externalUnit ?? "—"}
+                    </Td>
                     <Td muted>
                       <span className="chrome-mono">{r.level}</span>
                     </Td>

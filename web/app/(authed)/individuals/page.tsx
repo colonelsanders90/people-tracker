@@ -18,7 +18,7 @@ export default async function IndividualsPage() {
     if (p.status === "Current") {
       currentByIndividual.set(p.individualId, {
         roleTitle: p.role.title,
-        unitName: p.role.unit.name,
+        unitName: p.role.unit?.name ?? p.role.externalUnit ?? "External",
       });
     }
     if (p.status === "Planned" || p.status === "Candidate") {

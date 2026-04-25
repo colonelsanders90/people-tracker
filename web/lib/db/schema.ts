@@ -29,14 +29,17 @@ export const units = pgTable("units", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Roles can be internal (unitId set, isExternal=false) or external
+// (unitId null, isExternal=true, externalUnit holds the sub-unit text
+// e.g. "DPLD", "X AELG", "APD").
 export const roles = pgTable("roles", {
   id: serial("id").primaryKey(),
   title: text("title").notNull(),
-  unitId: integer("unit_id")
-    .notNull()
-    .references(() => units.id),
+  unitId: integer("unit_id").references(() => units.id),
   level: levelEnum("level").notNull(),
   isHead: boolean("is_head").notNull().default(false),
+  isExternal: boolean("is_external").notNull().default(false),
+  externalUnit: text("external_unit"),
   standardTenureMonths: integer("standard_tenure_months"),
   isVacant: boolean("is_vacant").notNull().default(false),
   specialisation: text("specialisation"),
@@ -44,6 +47,8 @@ export const roles = pgTable("roles", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });
 
+// Individuals can be internal or external (e.g. "COL James Lim coming
+// in to Branch Head A from outside RAiD").
 export const individuals = pgTable("individuals", {
   id: serial("id").primaryKey(),
   name: text("name").notNull(),
@@ -51,6 +56,7 @@ export const individuals = pgTable("individuals", {
   rank: text("rank"),
   specialisation: text("specialisation"),
   email: text("email"),
+  isExternal: boolean("is_external").notNull().default(false),
   isActive: boolean("is_active").notNull().default(true),
   createdAt: timestamp("created_at").notNull().defaultNow(),
 });

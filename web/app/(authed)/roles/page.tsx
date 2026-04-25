@@ -53,7 +53,8 @@ export default async function RolesPage() {
           </thead>
           <tbody>
             {roles.map((r, idx) => {
-              const unit = unitById.get(r.unitId);
+              const unit =
+                r.unitId == null ? null : unitById.get(r.unitId);
               const inc = incumbents.get(r.id);
               return (
                 <tr
@@ -78,7 +79,14 @@ export default async function RolesPage() {
                       </span>
                     )}
                   </Td>
-                  <Td muted>{unit?.name}</Td>
+                  <Td muted>
+                    {unit?.name ?? r.externalUnit ?? "—"}
+                    {r.isExternal && (
+                      <span className="ml-2 chrome-mono text-[10px] text-[var(--muted-foreground)]">
+                        external
+                      </span>
+                    )}
+                  </Td>
                   <Td muted>
                     <span className="chrome-mono">{r.level}</span>
                   </Td>

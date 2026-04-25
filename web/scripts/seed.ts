@@ -1,4 +1,5 @@
-import "dotenv/config";
+// DATABASE_URL is loaded by `tsx --env-file=.env.local --env-file=.env`
+// in the npm script — see package.json.
 import { db, units, roles, individuals, postings } from "../lib/db";
 
 async function reset() {

@@ -41,7 +41,7 @@ Save. Railway redeploys the web service automatically. From now on the running a
 This step creates / alters tables to match the Drizzle schema. Run it from your laptop pointing at the Railway Postgres.
 
 1. In Railway → Postgres service → **Variables** → click the eye icon on `DATABASE_PUBLIC_URL` → copy the value.
-2. In `web/.env.local`, paste it as `DATABASE_URL`:
+2. Create `web/.env.local` (this file does not exist by default — it's gitignored, so it never gets committed) and paste the URL as `DATABASE_URL`:
 
    ```bash
    # web/.env.local — gitignored, do not commit
@@ -55,6 +55,11 @@ This step creates / alters tables to match the Drizzle schema. Run it from your 
    ```
 
    You should see Drizzle apply the schema and exit. If you get `ECONNREFUSED`, you copied the internal URL by mistake — go back and grab `DATABASE_PUBLIC_URL`.
+
+   > **If `db:push` asks for an interactive prompt** ("schema conflict"), it's because there's leftover state in the DB (an old table from a previous attempt). Wipe the public schema once and retry:
+   > ```bash
+   > psql "$DATABASE_URL" -c 'DROP SCHEMA public CASCADE; CREATE SCHEMA public;'
+   > ```
 
 ### 4. Seed sample data (first time only, or whenever you want to reset)
 
@@ -115,7 +120,9 @@ The connection layer (`web/lib/db/index.ts`) auto-disables SSL when the URL cont
 
 - **`relation "roles" does not exist`** — schema hasn't been pushed yet. Run `db:push` per step 3.
 - **`password authentication failed`** — your `.env.local` has a stale credential. Re-copy `DATABASE_PUBLIC_URL` from Railway.
-- **`ECONNREFUSED` from your laptop** — you used the internal `DATABASE_URL` instead of `DATABASE_PUBLIC_URL`. Switch.
+- **`ECONNREFUSED 127.0.0.1:5432` from `db:seed`** — the env file isn't being loaded. `db:seed` uses `tsx --env-file-if-exists=.env.local`, which needs Node ≥ 20.10 / tsx ≥ 4. If you're on an older Node, upgrade (`brew upgrade node`) or `export DATABASE_URL=…` in your shell before running.
+- **`ECONNREFUSED <host>` from your laptop** — you used the internal `DATABASE_URL` instead of `DATABASE_PUBLIC_URL`. Switch.
+- **drizzle-kit prompts interactively / errors about TTY** — leftover tables in the DB confuse its diff. Drop and recreate the public schema with the `psql` one-liner above, then retry.
 - **`SELF_SIGNED_CERT_IN_CHAIN` from production** — already handled by `lib/db/index.ts` (`ssl: { rejectUnauthorized: false }` when not localhost). If you see this anyway, double-check `DATABASE_URL` in production isn't pointing at localhost.
 - **Drizzle Studio** — `npm run db:studio` opens a local browser GUI for inspecting / editing rows. Same `.env.local` rules apply.
 

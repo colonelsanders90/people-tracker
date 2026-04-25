@@ -95,11 +95,27 @@ export function PostingTimeline({
     | { kind: "later"; posting: PostingWithRelations };
 
   const items: Categorised[] = postings.map((p) => {
-    if (!p.startDate && p.status === "Candidate") {
+    // No start date at all → "Dates TBD" strip (only sensible for forward-looking statuses).
+    if (!p.startDate && (p.status === "Candidate" || p.status === "Planned")) {
       return { kind: "dateless", posting: p };
     }
     const start = parseDate(p.startDate, today);
-    const end = parseDate(p.endDate, start);
+
+    // If no end date, derive one so the bar has a sensible width:
+    //  - Planned/Candidate: assume the role's standardTenureMonths (default 24)
+    //  - Current: assume ongoing through the role's standardTenureMonths from start
+    //  - Past with no end: fall back to today
+    let end: Date;
+    if (p.endDate) {
+      end = new Date(p.endDate);
+    } else if (p.status === "Past") {
+      end = today;
+    } else {
+      const months = p.role.standardTenureMonths ?? 24;
+      end = new Date(start);
+      end.setMonth(end.getMonth() + months);
+    }
+
     if (end < windowStart) return { kind: "earlier", posting: p };
     if (start > windowEnd) return { kind: "later", posting: p };
     return { kind: "in-window", posting: p, start, end };

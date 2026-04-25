@@ -160,22 +160,22 @@ async function seed() {
     { individualId: tan.id, roleId: hdRaid.id, status: "Current", startDate: "2024-01-01", endDate: "2026-12-31" },
     // Hd P4B / Dy Hd RAiD — example of the dual-hatted role
     { individualId: siti.id, roleId: headOf("P4B"), status: "Current", startDate: "2024-01-01", endDate: "2026-06-30" },
-    { individualId: siti.id, roleId: hdRaid.id, status: "Candidate", notes: "Strong succession candidate; pending COL promotion." },
+    { individualId: siti.id, roleId: hdRaid.id, status: "Candidate", startDate: "2026-07-01", endDate: "2029-06-30", notes: "Strong succession candidate; pending COL promotion. Q3 2026 take-over." },
     // CyDef
     { individualId: raj.id, roleId: headOf("CyDef"), status: "Current", startDate: "2023-06-01", endDate: "2026-05-31" },
     { individualId: daniel.id, roleId: cyEng.id, status: "Current", startDate: "2024-01-01", endDate: "2026-12-31" },
-    { individualId: priya.id, roleId: cyAna.id, status: "Candidate", startDate: "2026-07-01", notes: "Natural rotation." },
+    { individualId: priya.id, roleId: cyAna.id, status: "Candidate", startDate: "2026-07-01", endDate: "2028-06-30", notes: "Natural rotation. Q3 2026 take-over." },
     { individualId: priya.id, roleId: cyEng.id, status: "Past", startDate: "2022-01-01", endDate: "2023-12-31", notes: "First tour." },
     // Cloud
     { individualId: wong.id, roleId: headOf("Cloud"), status: "Current", startDate: "2024-01-01", endDate: "2026-12-31" },
-    { individualId: marcus.id, roleId: cloudEng.id, status: "Candidate", notes: "Cross-branch move from SWiFT being considered." },
+    { individualId: marcus.id, roleId: cloudEng.id, status: "Candidate", startDate: "2027-01-01", endDate: "2028-12-31", notes: "Cross-branch move from SWiFT being considered." },
     // SWiFT
     { individualId: jane.id, roleId: swEng.id, status: "Current", startDate: "2024-01-01", endDate: "2026-06-30" },
     { individualId: jane.id, roleId: headOf("SWiFT"), status: "Planned", startDate: "2026-07-01", endDate: "2028-12-31", notes: "Approved succession." },
     { individualId: marcus.id, roleId: swEng.id, status: "Past", startDate: "2022-01-01", endDate: "2023-12-31" },
     // Mission Data
     { individualId: alex.id, roleId: missionAna.id, status: "Current", startDate: "2024-06-01", endDate: "2026-12-31" },
-    { individualId: alex.id, roleId: headOf("Mission Data"), status: "Candidate", notes: "Earmarked for next cycle." },
+    { individualId: alex.id, roleId: headOf("Mission Data"), status: "Candidate", startDate: "2027-01-01", endDate: "2029-12-31", notes: "Earmarked for next cycle." },
   ]);
 
   console.log(`Seed complete: ${BRANCHES.length} branches + Hd RAiD + ${people.length} people.`);

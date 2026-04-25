@@ -41,7 +41,7 @@ export default async function OrgPage() {
       <header className="accent-strip pl-5 py-1">
         <div className="overline">Manpower · Organisation</div>
         <h1 className="text-3xl mt-1">
-          <RAiD /> org structure
+          <RAiD /> Org Structure
         </h1>
         <p className="text-[15px] text-[var(--muted-foreground)] mt-1 max-w-2xl">
           The whole tree at a glance. Click any role to see incumbents and who is queued

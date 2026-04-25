@@ -45,10 +45,8 @@ export default async function IndividualsPage() {
           <thead>
             <tr className="bg-[var(--raid-blue-deep)] text-white">
               <Th>Name</Th>
-              <Th>Rank</Th>
-              <Th>Specialisation</Th>
               <Th>Current role</Th>
-              <Th align="right">Pending moves</Th>
+              <Th align="right">Possible next roles</Th>
             </tr>
           </thead>
           <tbody>
@@ -70,8 +68,6 @@ export default async function IndividualsPage() {
                       {i.name}
                     </Link>
                   </Td>
-                  <Td muted>{i.rank ?? "—"}</Td>
-                  <Td muted>{i.specialisation ?? "—"}</Td>
                   <Td>
                     {cur ? (
                       <>
@@ -120,18 +116,12 @@ function Th({
 function Td({
   children,
   align,
-  muted,
 }: {
   children: React.ReactNode;
   align?: "right";
-  muted?: boolean;
 }) {
   return (
-    <td
-      className={`px-4 py-2.5 ${align === "right" ? "text-right" : ""} ${
-        muted ? "text-[var(--muted-foreground)]" : ""
-      }`}
-    >
+    <td className={`px-4 py-2.5 ${align === "right" ? "text-right" : ""}`}>
       {children}
     </td>
   );

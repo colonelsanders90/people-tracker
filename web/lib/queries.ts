@@ -1,65 +1,123 @@
-import type { Individual, Role, Unit } from "./db/schema";
-import {
-  units as mockUnits,
-  roles as mockRoles,
-  individuals as mockIndividuals,
-  postingsWithRelations,
-} from "./mock-data";
+import { eq, asc, and, inArray } from "drizzle-orm";
+import { db, units, roles, individuals, postings } from "./db";
+import type { Individual, Posting, Role, Unit } from "./db/schema";
 
-export type PostingWithRelations = import("./db/schema").Posting & {
+export type PostingWithRelations = Posting & {
   role: Role & { unit: Unit };
   individual: Individual;
 };
 
 export async function getAllUnits(): Promise<Unit[]> {
-  return [...mockUnits].sort((a, b) => a.level.localeCompare(b.level) || a.name.localeCompare(b.name));
+  return db.select().from(units).orderBy(asc(units.level), asc(units.name));
 }
 
 export async function getAllRoles(): Promise<Role[]> {
-  return [...mockRoles].sort((a, b) => a.level.localeCompare(b.level) || a.title.localeCompare(b.title));
+  return db.select().from(roles).orderBy(asc(roles.level), asc(roles.title));
 }
 
 export async function getAllIndividuals(): Promise<Individual[]> {
-  return [...mockIndividuals].sort((a, b) => a.name.localeCompare(b.name));
-}
-
-export async function getAllPostings(): Promise<PostingWithRelations[]> {
-  return [...postingsWithRelations].sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
+  return db.select().from(individuals).orderBy(asc(individuals.name));
 }
 
 export async function getIndividual(id: number): Promise<Individual | null> {
-  return mockIndividuals.find((i) => i.id === id) ?? null;
+  const rows = await db
+    .select()
+    .from(individuals)
+    .where(eq(individuals.id, id))
+    .limit(1);
+  return rows[0] ?? null;
 }
 
-export async function getRole(id: number): Promise<(Role & { unit: Unit }) | null> {
-  const role = mockRoles.find((r) => r.id === id);
-  if (!role) return null;
-  const unit = mockUnits.find((u) => u.id === role.unitId)!;
-  return { ...role, unit };
+export async function getRole(
+  id: number,
+): Promise<(Role & { unit: Unit }) | null> {
+  const rows = await db
+    .select()
+    .from(roles)
+    .innerJoin(units, eq(roles.unitId, units.id))
+    .where(eq(roles.id, id))
+    .limit(1);
+  if (!rows[0]) return null;
+  return { ...rows[0].roles, unit: rows[0].units };
 }
 
-export async function getPostingsForIndividual(individualId: number): Promise<PostingWithRelations[]> {
-  return postingsWithRelations
-    .filter((p) => p.individualId === individualId)
-    .sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
+export async function getPostingsForIndividual(
+  individualId: number,
+): Promise<PostingWithRelations[]> {
+  const rows = await db
+    .select()
+    .from(postings)
+    .innerJoin(roles, eq(postings.roleId, roles.id))
+    .innerJoin(units, eq(roles.unitId, units.id))
+    .innerJoin(individuals, eq(postings.individualId, individuals.id))
+    .where(eq(postings.individualId, individualId))
+    .orderBy(asc(postings.startDate));
+  return rows.map((r) => ({
+    ...r.postings,
+    role: { ...r.roles, unit: r.units },
+    individual: r.individuals,
+  }));
 }
 
-export async function getPostingsForRole(roleId: number): Promise<PostingWithRelations[]> {
-  return postingsWithRelations
-    .filter((p) => p.roleId === roleId)
-    .sort((a, b) => (a.startDate ?? "").localeCompare(b.startDate ?? ""));
+export async function getPostingsForRole(
+  roleId: number,
+): Promise<PostingWithRelations[]> {
+  const rows = await db
+    .select()
+    .from(postings)
+    .innerJoin(roles, eq(postings.roleId, roles.id))
+    .innerJoin(units, eq(roles.unitId, units.id))
+    .innerJoin(individuals, eq(postings.individualId, individuals.id))
+    .where(eq(postings.roleId, roleId))
+    .orderBy(asc(postings.startDate));
+  return rows.map((r) => ({
+    ...r.postings,
+    role: { ...r.roles, unit: r.units },
+    individual: r.individuals,
+  }));
 }
 
-export async function getCurrentIncumbent(roleId: number): Promise<Individual | null> {
-  return postingsWithRelations.find((p) => p.roleId === roleId && p.status === "Current")?.individual ?? null;
+export async function getAllPostings(): Promise<PostingWithRelations[]> {
+  const rows = await db
+    .select()
+    .from(postings)
+    .innerJoin(roles, eq(postings.roleId, roles.id))
+    .innerJoin(units, eq(roles.unitId, units.id))
+    .innerJoin(individuals, eq(postings.individualId, individuals.id))
+    .orderBy(asc(postings.startDate));
+  return rows.map((r) => ({
+    ...r.postings,
+    role: { ...r.roles, unit: r.units },
+    individual: r.individuals,
+  }));
 }
 
-export async function getCurrentIncumbentsByRole(roleIds: number[]): Promise<Map<number, Individual>> {
+export async function getCurrentIncumbent(
+  roleId: number,
+): Promise<Individual | null> {
+  const rows = await db
+    .select()
+    .from(postings)
+    .innerJoin(individuals, eq(postings.individualId, individuals.id))
+    .where(and(eq(postings.roleId, roleId), eq(postings.status, "Current")))
+    .limit(1);
+  return rows[0]?.individuals ?? null;
+}
+
+export async function getCurrentIncumbentsByRole(
+  roleIds: number[],
+): Promise<Map<number, Individual>> {
+  if (roleIds.length === 0) return new Map();
+  const rows = await db
+    .select()
+    .from(postings)
+    .innerJoin(individuals, eq(postings.individualId, individuals.id))
+    .where(
+      and(inArray(postings.roleId, roleIds), eq(postings.status, "Current")),
+    );
   const map = new Map<number, Individual>();
-  for (const p of postingsWithRelations) {
-    if (p.status === "Current" && roleIds.includes(p.roleId)) {
-      map.set(p.roleId, p.individual);
-    }
+  for (const r of rows) {
+    map.set(r.postings.roleId, r.individuals);
   }
   return map;
 }

@@ -1,13 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Separator } from "@/components/ui/separator";
 import { OrgChart } from "@/components/org-chart";
 import { PostingTimeline } from "@/components/posting-timeline";
 import { StatusBadge } from "@/components/status-badge";
@@ -36,7 +28,6 @@ export default async function RoleViewPage(props: PageProps<"/roles/[id]">) {
   const incumbents = await getCurrentIncumbentsByRole(roles.map((r) => r.id));
   const tree = buildUnitTree(units, roles);
 
-  const current = postings.find((p) => p.status === "Current");
   const future = postings.filter(
     (p) => p.status === "Planned" || p.status === "Candidate",
   );
@@ -44,90 +35,92 @@ export default async function RoleViewPage(props: PageProps<"/roles/[id]">) {
 
   return (
     <div className="space-y-6">
-      <header className="flex items-baseline gap-3 flex-wrap">
+      <div>
         <Link
           href="/roles"
-          className="text-sm text-muted-foreground hover:underline"
+          className="chrome-mono text-[11px] text-[var(--muted-foreground)] hover:text-[var(--raid-blue-deep)]"
         >
           ← Roles
         </Link>
-        <h1 className="text-2xl font-semibold">{role.title}</h1>
-        <span className="text-sm text-muted-foreground">
-          {role.unit.name} · {role.level}
-        </span>
-        {role.isVacant && <Badge variant="destructive">VACANT</Badge>}
-        {role.specialisation && (
-          <span className="text-sm text-muted-foreground">
-            · {role.specialisation}
-          </span>
-        )}
+      </div>
+
+      <header className="accent-strip pl-5 py-1">
+        <div className="overline">Manpower · Role</div>
+        <div className="flex items-baseline gap-3 flex-wrap mt-1">
+          <h1 className="text-3xl">{role.title}</h1>
+          {role.isVacant && (
+            <span
+              className="overline text-[12px]"
+              style={{ color: "var(--raid-coral)" }}
+            >
+              Vacant
+            </span>
+          )}
+        </div>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 chrome-mono text-[11px] text-[var(--muted-foreground)] mt-2">
+          <span>{role.unit.name}</span>
+          <span>· {role.level}</span>
+          {role.specialisation && <span>· {role.specialisation}</span>}
+        </div>
       </header>
 
-      <div className="grid lg:grid-cols-[1fr_380px] gap-6">
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Incumbent timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PostingTimeline postings={postings} mode="role" />
-            </CardContent>
-          </Card>
+          <section className="surface-card p-5">
+            <div className="overline mb-3">Incumbent timeline</div>
+            <PostingTimeline postings={postings} mode="role" />
+          </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Who is coming in next?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {future.length === 0 && (
-                <p className="text-sm text-muted-foreground italic">
-                  No planned or candidate incumbents yet. Add one from the admin
-                  page.
-                </p>
-              )}
-              {future.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-start gap-3 text-sm border rounded-md p-3"
-                >
-                  <StatusBadge status={p.status} />
-                  <div className="flex-1">
-                    <Link
-                      href={`/individuals/${p.individual.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {p.individual.name}
-                    </Link>
-                    {p.individual.rank && (
-                      <span className="text-muted-foreground">
-                        {" "}
-                        · {p.individual.rank}
-                      </span>
-                    )}
-                    {(p.startDate || p.endDate) && (
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {p.startDate ?? "?"} → {p.endDate ?? "?"}
-                      </div>
-                    )}
-                    {p.notes && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {p.notes}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <section className="surface-card p-5">
+            <div className="overline mb-3">Who is coming in next?</div>
+            {future.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)] italic">
+                No planned or candidate incumbents yet. Add one from the admin page.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {future.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-start gap-3 text-sm border border-black/[0.06] rounded-md p-3 bg-black/[0.015]"
+                  >
+                    <StatusBadge status={p.status} />
+                    <div className="flex-1">
+                      <Link
+                        href={`/individuals/${p.individual.id}`}
+                        className="font-medium hover:underline text-[var(--raid-blue-deep)]"
+                      >
+                        {p.individual.name}
+                      </Link>
+                      {p.individual.rank && (
+                        <span className="text-[var(--muted-foreground)]">
+                          {" "}
+                          · {p.individual.rank}
+                        </span>
+                      )}
+                      {(p.startDate || p.endDate) && (
+                        <div className="chrome-mono text-[10px] text-[var(--muted-foreground)] mt-1">
+                          {p.startDate ?? "?"} → {p.endDate ?? "?"}
+                        </div>
+                      )}
+                      {p.notes && (
+                        <p className="text-xs text-[var(--muted-foreground)] mt-1.5 italic">
+                          {p.notes}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
           {past.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Past incumbents</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+            <section className="surface-card p-5">
+              <div className="overline mb-3">Past incumbents</div>
+              <ul className="space-y-2 text-sm">
                 {past.map((p) => (
-                  <div key={p.id} className="flex items-start gap-3">
+                  <li key={p.id} className="flex items-start gap-3">
                     <StatusBadge status={p.status} />
                     <div className="flex-1">
                       <Link
@@ -136,36 +129,34 @@ export default async function RoleViewPage(props: PageProps<"/roles/[id]">) {
                       >
                         {p.individual.name}
                       </Link>
-                      <span className="text-muted-foreground text-xs ml-2">
+                      <span className="chrome-mono text-[10px] text-[var(--muted-foreground)] ml-2">
                         {p.startDate} → {p.endDate}
                       </span>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </CardContent>
-            </Card>
+              </ul>
+            </section>
           )}
         </div>
 
-        <aside className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Org chart</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-xs text-muted-foreground mb-3">
-                Highlighted: <span className="font-medium">{role.title}</span>{" "}
-                in {role.unit.name}.
-              </p>
-              <Separator className="mb-3" />
-              <OrgChart
-                tree={tree}
-                incumbents={incumbents}
-                highlightRoleId={role.id}
-                highlightUnitId={role.unit.id}
-              />
-            </CardContent>
-          </Card>
+        <aside>
+          <section className="surface-card p-4">
+            <div className="overline mb-3">Org context</div>
+            <p className="chrome-mono text-[10.5px] text-[var(--muted-foreground)] mb-3 leading-snug">
+              Highlighted:{" "}
+              <span className="text-[var(--foreground)] font-medium">
+                {role.title}
+              </span>{" "}
+              · {role.unit.name}
+            </p>
+            <OrgChart
+              tree={tree}
+              incumbents={incumbents}
+              highlightRoleId={role.id}
+              highlightUnitId={role.unit.id}
+            />
+          </section>
         </aside>
       </div>
     </div>

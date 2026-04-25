@@ -1,12 +1,5 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import {
-  Card,
-  CardContent,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Separator } from "@/components/ui/separator";
 import { OrgChart } from "@/components/org-chart";
 import { PostingTimeline } from "@/components/posting-timeline";
 import { StatusBadge } from "@/components/status-badge";
@@ -45,89 +38,80 @@ export default async function IndividualViewPage(
 
   return (
     <div className="space-y-6">
-      <header className="flex items-baseline gap-3 flex-wrap">
+      <div>
         <Link
           href="/individuals"
-          className="text-sm text-muted-foreground hover:underline"
+          className="chrome-mono text-[11px] text-[var(--muted-foreground)] hover:text-[var(--raid-blue-deep)]"
         >
           ← Individuals
         </Link>
-        <h1 className="text-2xl font-semibold">{individual.name}</h1>
-        {individual.rank && (
-          <span className="text-sm text-muted-foreground">
-            {individual.rank}
-          </span>
-        )}
-        {individual.specialisation && (
-          <span className="text-sm text-muted-foreground">
-            · {individual.specialisation}
-          </span>
-        )}
+      </div>
+
+      <header className="accent-strip pl-5 py-1">
+        <div className="overline">Manpower · Individual</div>
+        <h1 className="text-3xl mt-1">{individual.name}</h1>
+        <div className="flex flex-wrap gap-x-3 gap-y-1 chrome-mono text-[11px] text-[var(--muted-foreground)] mt-2">
+          {individual.rank && <span>{individual.rank}</span>}
+          {individual.specialisation && <span>· {individual.specialisation}</span>}
+          {individual.employeeId && <span>· {individual.employeeId}</span>}
+        </div>
       </header>
 
-      <div className="grid lg:grid-cols-[1fr_380px] gap-6">
+      <div className="grid lg:grid-cols-[1fr_360px] gap-6">
         <div className="space-y-6">
-          <Card>
-            <CardHeader>
-              <CardTitle>Movement timeline</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PostingTimeline postings={postings} mode="individual" />
-            </CardContent>
-          </Card>
+          <section className="surface-card p-5">
+            <div className="overline mb-3">Movement timeline</div>
+            <PostingTimeline postings={postings} mode="individual" />
+          </section>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>Where next?</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {future.length === 0 && (
-                <p className="text-sm text-muted-foreground italic">
-                  No planned or candidate postings yet. Add one from the admin
-                  page.
-                </p>
-              )}
-              {future.map((p) => (
-                <div
-                  key={p.id}
-                  className="flex items-start gap-3 text-sm border rounded-md p-3"
-                >
-                  <StatusBadge status={p.status} />
-                  <div className="flex-1">
-                    <Link
-                      href={`/roles/${p.role.id}`}
-                      className="font-medium hover:underline"
-                    >
-                      {p.role.title}
-                    </Link>
-                    <span className="text-muted-foreground">
-                      {" "}
-                      · {p.role.unit.name} · {p.role.level}
-                    </span>
-                    {(p.startDate || p.endDate) && (
-                      <div className="text-xs text-muted-foreground mt-0.5">
-                        {p.startDate ?? "?"} → {p.endDate ?? "?"}
-                      </div>
-                    )}
-                    {p.notes && (
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {p.notes}
-                      </p>
-                    )}
-                  </div>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
+          <section className="surface-card p-5">
+            <div className="overline mb-3">Where next?</div>
+            {future.length === 0 ? (
+              <p className="text-sm text-[var(--muted-foreground)] italic">
+                No planned or candidate postings yet. Add one from the admin page.
+              </p>
+            ) : (
+              <ul className="space-y-2.5">
+                {future.map((p) => (
+                  <li
+                    key={p.id}
+                    className="flex items-start gap-3 text-sm border border-black/[0.06] rounded-md p-3 bg-black/[0.015]"
+                  >
+                    <StatusBadge status={p.status} />
+                    <div className="flex-1">
+                      <Link
+                        href={`/roles/${p.role.id}`}
+                        className="font-medium hover:underline text-[var(--raid-blue-deep)]"
+                      >
+                        {p.role.title}
+                      </Link>
+                      <span className="text-[var(--muted-foreground)]">
+                        {" "}
+                        · {p.role.unit.name} · {p.role.level}
+                      </span>
+                      {(p.startDate || p.endDate) && (
+                        <div className="chrome-mono text-[10px] text-[var(--muted-foreground)] mt-1">
+                          {p.startDate ?? "?"} → {p.endDate ?? "?"}
+                        </div>
+                      )}
+                      {p.notes && (
+                        <p className="text-xs text-[var(--muted-foreground)] mt-1.5 italic">
+                          {p.notes}
+                        </p>
+                      )}
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
 
           {past.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Past postings</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-2 text-sm">
+            <section className="surface-card p-5">
+              <div className="overline mb-3">Past postings</div>
+              <ul className="space-y-2 text-sm">
                 {past.map((p) => (
-                  <div key={p.id} className="flex items-start gap-3">
+                  <li key={p.id} className="flex items-start gap-3">
                     <StatusBadge status={p.status} />
                     <div className="flex-1">
                       <Link
@@ -136,43 +120,40 @@ export default async function IndividualViewPage(
                       >
                         {p.role.title}
                       </Link>
-                      <span className="text-muted-foreground">
+                      <span className="text-[var(--muted-foreground)]">
                         {" "}
                         · {p.role.unit.name}
                       </span>
-                      <span className="text-muted-foreground text-xs ml-2">
+                      <span className="chrome-mono text-[10px] text-[var(--muted-foreground)] ml-2">
                         {p.startDate} → {p.endDate}
                       </span>
                     </div>
-                  </div>
+                  </li>
                 ))}
-              </CardContent>
-            </Card>
+              </ul>
+            </section>
           )}
         </div>
 
-        <aside className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Org chart</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {current && (
-                <p className="text-xs text-muted-foreground mb-3">
-                  Highlighted: currently{" "}
-                  <span className="font-medium">{current.role.title}</span> in{" "}
-                  {current.role.unit.name}.
-                </p>
-              )}
-              <Separator className="mb-3" />
-              <OrgChart
-                tree={tree}
-                incumbents={incumbents}
-                highlightRoleId={current?.role.id}
-                highlightUnitId={current?.role.unit.id}
-              />
-            </CardContent>
-          </Card>
+        <aside>
+          <section className="surface-card p-4">
+            <div className="overline mb-3">Org context</div>
+            {current && (
+              <p className="chrome-mono text-[10.5px] text-[var(--muted-foreground)] mb-3 leading-snug">
+                Currently:{" "}
+                <span className="text-[var(--foreground)] font-medium">
+                  {current.role.title}
+                </span>{" "}
+                · {current.role.unit.name}
+              </p>
+            )}
+            <OrgChart
+              tree={tree}
+              incumbents={incumbents}
+              highlightRoleId={current?.role.id}
+              highlightUnitId={current?.role.unit.id}
+            />
+          </section>
         </aside>
       </div>
     </div>

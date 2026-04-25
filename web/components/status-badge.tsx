@@ -1,17 +1,36 @@
-import { Badge } from "@/components/ui/badge";
 import type { PostingStatus } from "@/lib/db/schema";
 
-const styles: Record<PostingStatus, string> = {
-  Past: "bg-neutral-200 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300",
-  Current: "bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-300",
-  Planned: "bg-blue-100 text-blue-800 dark:bg-blue-900/40 dark:text-blue-300",
-  Candidate: "bg-amber-100 text-amber-800 dark:bg-amber-900/40 dark:text-amber-300",
+const styles: Record<PostingStatus, { bg: string; text: string; label: string }> = {
+  Past: {
+    bg: "var(--raid-status-gray-bg)",
+    text: "var(--raid-status-gray-text)",
+    label: "Past",
+  },
+  Current: {
+    bg: "var(--raid-status-green-bg)",
+    text: "var(--raid-status-green-text)",
+    label: "Current",
+  },
+  Planned: {
+    bg: "var(--raid-status-blue-bg)",
+    text: "var(--raid-status-blue-text)",
+    label: "Planned",
+  },
+  Candidate: {
+    bg: "var(--raid-status-amber-bg)",
+    text: "var(--raid-status-amber-text)",
+    label: "Candidate",
+  },
 };
 
 export function StatusBadge({ status }: { status: PostingStatus }) {
+  const s = styles[status];
   return (
-    <Badge variant="secondary" className={styles[status]}>
-      {status}
-    </Badge>
+    <span
+      className="inline-flex items-center font-mono-brand text-[10.5px] font-semibold tracking-[0.07em] uppercase rounded-full px-2 py-0.5 whitespace-nowrap"
+      style={{ background: s.bg, color: s.text }}
+    >
+      {s.label}
+    </span>
   );
 }

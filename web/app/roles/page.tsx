@@ -1,15 +1,6 @@
 export const dynamic = "force-dynamic";
 
 import Link from "next/link";
-import { Badge } from "@/components/ui/badge";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import {
   getAllRoles,
   getAllUnits,
@@ -38,53 +29,60 @@ export default async function RolesPage() {
   }
 
   return (
-    <div className="space-y-4">
-      <header>
-        <h1 className="text-xl font-semibold">Roles</h1>
-        <p className="text-sm text-muted-foreground">
-          {roles.length} roles across {units.length} units. Click a role to see
-          its incumbent history and candidates.
+    <div className="space-y-6">
+      <header className="accent-strip pl-5 py-1">
+        <div className="overline">Manpower · Roles</div>
+        <h1 className="text-2xl mt-1">Roles</h1>
+        <p className="text-sm text-[var(--muted-foreground)] mt-1">
+          {roles.length} roles across {units.length} units. Click a role to see its
+          incumbent history and queued candidates.
         </p>
       </header>
 
-      <div className="border rounded-lg bg-white dark:bg-neutral-900 overflow-hidden">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Role</TableHead>
-              <TableHead>Unit</TableHead>
-              <TableHead>Level</TableHead>
-              <TableHead>Current incumbent</TableHead>
-              <TableHead className="text-right">Planned</TableHead>
-              <TableHead className="text-right">Candidates</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {roles.map((r) => {
+      <div className="surface-card overflow-hidden">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="bg-[var(--raid-blue-deep)] text-white">
+              <Th>Role</Th>
+              <Th>Unit</Th>
+              <Th>Level</Th>
+              <Th>Current incumbent</Th>
+              <Th align="right">Planned</Th>
+              <Th align="right">Candidates</Th>
+            </tr>
+          </thead>
+          <tbody>
+            {roles.map((r, idx) => {
               const unit = unitById.get(r.unitId);
               const inc = incumbents.get(r.id);
               return (
-                <TableRow key={r.id}>
-                  <TableCell>
+                <tr
+                  key={r.id}
+                  className={`border-t border-black/[0.06] hover:bg-[#f5f8fc] transition ${
+                    idx % 2 === 1 ? "bg-black/[0.015]" : ""
+                  }`}
+                >
+                  <Td>
                     <Link
                       href={`/roles/${r.id}`}
-                      className="font-medium hover:underline"
+                      className="font-medium hover:underline text-[var(--raid-blue-deep)]"
                     >
                       {r.title}
                     </Link>
                     {r.isVacant && (
-                      <Badge variant="destructive" className="ml-2 text-[10px]">
-                        VACANT
-                      </Badge>
+                      <span
+                        className="ml-2 overline"
+                        style={{ color: "var(--raid-coral)" }}
+                      >
+                        Vacant
+                      </span>
                     )}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {unit?.name}
-                  </TableCell>
-                  <TableCell className="text-muted-foreground">
-                    {r.level}
-                  </TableCell>
-                  <TableCell>
+                  </Td>
+                  <Td muted>{unit?.name}</Td>
+                  <Td muted>
+                    <span className="chrome-mono">{r.level}</span>
+                  </Td>
+                  <Td>
                     {inc ? (
                       <Link
                         href={`/individuals/${inc.id}`}
@@ -93,23 +91,65 @@ export default async function RolesPage() {
                         {inc.name}
                       </Link>
                     ) : (
-                      <span className="text-muted-foreground italic">
-                        unfilled
+                      <span className="font-mono-brand text-[11px] uppercase tracking-wider text-[var(--muted-foreground)]">
+                        Unfilled
                       </span>
                     )}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {plannedCounts.get(r.id) ?? 0}
-                  </TableCell>
-                  <TableCell className="text-right tabular-nums">
-                    {candidateCounts.get(r.id) ?? 0}
-                  </TableCell>
-                </TableRow>
+                  </Td>
+                  <Td align="right">
+                    <span className="chrome-mono tabular-nums">
+                      {plannedCounts.get(r.id) ?? 0}
+                    </span>
+                  </Td>
+                  <Td align="right">
+                    <span className="chrome-mono tabular-nums">
+                      {candidateCounts.get(r.id) ?? 0}
+                    </span>
+                  </Td>
+                </tr>
               );
             })}
-          </TableBody>
-        </Table>
+          </tbody>
+        </table>
       </div>
     </div>
+  );
+}
+
+function Th({
+  children,
+  align,
+}: {
+  children: React.ReactNode;
+  align?: "right";
+}) {
+  return (
+    <th
+      className={`px-4 py-2.5 chrome-mono text-white/85 text-[11px] font-medium tracking-wider ${
+        align === "right" ? "text-right" : "text-left"
+      }`}
+    >
+      {children}
+    </th>
+  );
+}
+
+function Td({
+  children,
+  align,
+  muted,
+}: {
+  children: React.ReactNode;
+  align?: "right";
+  muted?: boolean;
+}) {
+  return (
+    <td
+      className={`px-4 py-2.5 ${align === "right" ? "text-right" : ""} ${
+        muted ? "text-[var(--muted-foreground)]" : ""
+      }`}
+    >
+      {children}
+    </td>
   );
 }

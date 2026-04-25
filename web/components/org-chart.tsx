@@ -9,6 +9,10 @@ type Props = {
   highlightUnitId?: number;
 };
 
+/**
+ * Compact, sidebar-friendly nested org chart.
+ * For the flagship full-page version, see /app/org/page.tsx.
+ */
 export function OrgChart({
   tree,
   incumbents,
@@ -16,7 +20,7 @@ export function OrgChart({
   highlightUnitId,
 }: Props) {
   return (
-    <div className="space-y-4">
+    <div className="space-y-3">
       {tree.map((node) => (
         <UnitBlock
           key={node.id}
@@ -41,27 +45,30 @@ function UnitBlock({
   highlightRoleId?: number;
   highlightUnitId?: number;
 }) {
-  const levelBg: Record<string, string> = {
-    L1: "bg-indigo-50 dark:bg-indigo-950/30 border-indigo-200 dark:border-indigo-900",
-    L2: "bg-sky-50 dark:bg-sky-950/30 border-sky-200 dark:border-sky-900",
-    L3: "bg-neutral-50 dark:bg-neutral-900/40 border-neutral-200 dark:border-neutral-800",
-  };
-
   const head = node.roles.find((r) => r.isHead);
   const staff = node.roles.filter((r) => !r.isHead);
   const unitHighlighted = highlightUnitId === node.id;
 
+  const levelStyles: Record<string, string> = {
+    L1: "border-[var(--raid-blue-deep)]/30 bg-[#F4F7FC]",
+    L2: "border-[var(--raid-blue)]/25 bg-white",
+    L3: "border-black/10 bg-white",
+  };
+
   return (
     <div
-      className={`border rounded-lg p-3 ${levelBg[node.level]} ${
-        unitHighlighted ? "ring-2 ring-yellow-400" : ""
+      className={`rounded-[10px] border p-3 ${levelStyles[node.level]} ${
+        unitHighlighted ? "outline outline-2 outline-[var(--raid-blue)]" : ""
       }`}
     >
       <div className="flex items-baseline gap-2">
-        <span className="text-xs font-mono px-1.5 py-0.5 rounded bg-white/60 dark:bg-black/30 text-muted-foreground">
-          {node.level}
-        </span>
-        <h3 className="font-semibold text-sm">{node.name}</h3>
+        <span className="overline">{node.level}</span>
+        <h3 className="font-semibold text-[13px] leading-tight">{node.name}</h3>
+        {node.code && (
+          <span className="ml-auto chrome-mono text-[10px] text-[var(--muted-foreground)]">
+            {node.code}
+          </span>
+        )}
       </div>
 
       {head && (
@@ -76,7 +83,7 @@ function UnitBlock({
       )}
 
       {staff.length > 0 && (
-        <ul className="mt-2 space-y-1">
+        <ul className="mt-1.5 space-y-1">
           {staff.map((r) => (
             <li key={r.id}>
               <RoleRow
@@ -90,7 +97,7 @@ function UnitBlock({
       )}
 
       {node.children.length > 0 && (
-        <div className="mt-3 ml-4 pl-3 border-l-2 border-neutral-300 dark:border-neutral-700 space-y-3">
+        <div className="mt-3 ml-3 pl-3 border-l border-[var(--raid-blue)]/20 space-y-2">
           {node.children.map((child) => (
             <UnitBlock
               key={child.id}
@@ -119,24 +126,26 @@ function RoleRow({
 }) {
   return (
     <div
-      className={`flex items-center gap-2 text-xs px-2 py-1 rounded ${
+      className={`flex items-center gap-2 text-xs px-2 py-1 rounded-md ${
         highlighted
-          ? "bg-yellow-100 dark:bg-yellow-900/40 ring-1 ring-yellow-400"
-          : "bg-white/70 dark:bg-black/20"
+          ? "bg-[var(--raid-blue-light)]/30 ring-1 ring-[var(--raid-blue)]"
+          : isHead
+            ? "bg-[var(--raid-blue-deep)]/[0.04]"
+            : "bg-black/[0.02]"
       }`}
     >
       <Link
         href={`/roles/${role.id}`}
-        className={`hover:underline ${isHead ? "font-semibold" : ""}`}
+        className={`hover:underline ${isHead ? "font-semibold text-[var(--raid-blue-deep)]" : ""}`}
       >
         {role.title}
       </Link>
       {role.isVacant && (
-        <span className="text-[10px] uppercase tracking-wide text-red-600 dark:text-red-400">
-          vacant
+        <span className="overline" style={{ color: "var(--raid-coral)" }}>
+          Vacant
         </span>
       )}
-      <span className="ml-auto text-muted-foreground truncate">
+      <span className="ml-auto truncate text-[var(--muted-foreground)]">
         {incumbent ? (
           <Link
             href={`/individuals/${incumbent.id}`}
@@ -145,7 +154,9 @@ function RoleRow({
             {incumbent.name}
           </Link>
         ) : (
-          <span className="italic">— unfilled</span>
+          <span className="font-mono-brand text-[10px] uppercase tracking-wider opacity-70">
+            Unfilled
+          </span>
         )}
       </span>
     </div>

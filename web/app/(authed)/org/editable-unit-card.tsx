@@ -51,14 +51,14 @@ export function EditableUnitCard({
 
   return (
     <div
-      className="surface-card overflow-hidden"
+      className="surface-card overflow-hidden flex flex-col"
       style={{
         maxWidth: maxWidth ? `${maxWidth}px` : undefined,
         width: "100%",
       }}
     >
       <div
-        className="px-4 py-3 text-white"
+        className="px-4 py-3 text-white flex-shrink-0"
         style={{ background: headerBg }}
       >
         {renaming ? (
@@ -71,7 +71,7 @@ export function EditableUnitCard({
                 alert((e as Error).message);
               }
             }}
-            className="flex gap-2 items-center"
+            className="flex flex-wrap gap-2 items-center"
           >
             <input type="hidden" name="id" value={unit.id} />
             <span className="overline-on-dark">{unit.level}</span>
@@ -80,7 +80,7 @@ export function EditableUnitCard({
               defaultValue={unit.name}
               required
               autoFocus
-              className="flex-1 px-2 py-1 text-sm bg-white/10 border border-white/30 rounded text-white placeholder-white/40 focus:outline-none focus:border-[var(--raid-blue-light)]"
+              className="flex-1 px-2 py-1 text-sm bg-white/10 border border-white/30 rounded text-white placeholder-white/40 focus:outline-none focus:border-[var(--raid-blue-light)] min-w-[100px]"
             />
             <button
               type="submit"
@@ -99,22 +99,22 @@ export function EditableUnitCard({
         ) : (
           <div className="flex items-baseline gap-2">
             <span className="overline-on-dark">{unit.level}</span>
-            <h3 className="font-semibold text-[15px] tracking-tight">
+            <h3 className="font-semibold text-[15px] tracking-tight truncate">
               {unit.name}
             </h3>
             {unit.code && (
-              <span className="chrome-mono text-white/65 text-[11px]">
+              <span className="chrome-mono text-white/65 text-[11px] hidden sm:inline">
                 {unit.code}
               </span>
             )}
             {isAdmin && tone === "L2" && (
-              <span className="ml-auto flex gap-1">
+              <span className="ml-auto flex gap-1 flex-shrink-0">
                 <button
                   onClick={() => setRenaming(true)}
-                  className="chrome-mono text-[10px] text-white/70 hover:text-white"
+                  className="chrome-mono text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-white/20 text-white transition"
                   title="Rename branch"
                 >
-                  edit
+                  Edit
                 </button>
                 <form
                   action={async (fd) => {
@@ -135,7 +135,7 @@ export function EditableUnitCard({
                   <input type="hidden" name="id" value={unit.id} />
                   <button
                     type="submit"
-                    className="chrome-mono text-[10px] text-white/70 hover:text-[var(--raid-coral)]"
+                    className="chrome-mono text-[10px] px-2 py-0.5 rounded bg-white/10 hover:bg-[var(--raid-coral)] text-white transition"
                     title="Delete branch"
                   >
                     ×
@@ -147,7 +147,7 @@ export function EditableUnitCard({
         )}
       </div>
 
-      <div className="p-4 space-y-3">
+      <div className="p-4 space-y-3 flex-1 flex flex-col">
         {head && (
           <EditableRoleCard
             role={head}
@@ -178,7 +178,7 @@ export function EditableUnitCard({
           </p>
         )}
 
-        {/* Add role */}
+        {/* Add role inline form */}
         {isAdmin && adding && (
           <form
             action={async (fd) => {
@@ -211,33 +211,34 @@ export function EditableUnitCard({
                   name="isHead"
                   className="accent-[var(--raid-blue)]"
                 />
-                Branch head
+                Head role
               </label>
               <input
                 name="specialisation"
                 placeholder="Specialisation"
                 className="border border-black/15 rounded px-2 py-1 bg-white text-[var(--foreground)] text-[12px] flex-1 min-w-[100px]"
               />
-              <div className="ml-auto flex gap-1">
-                <button
-                  type="submit"
-                  className="px-2 py-1 chrome-mono text-[10px] bg-[var(--raid-blue)] text-white rounded hover:bg-[var(--raid-blue-deep)]"
-                >
-                  Add
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setAdding(false)}
-                  className="px-2 py-1 chrome-mono text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
-                >
-                  Cancel
-                </button>
-              </div>
+            </div>
+            <div className="flex gap-1">
+              <button
+                type="submit"
+                className="px-3 py-1.5 chrome-mono text-[11px] bg-[var(--raid-blue)] text-white rounded hover:bg-[var(--raid-blue-deep)]"
+              >
+                Add role
+              </button>
+              <button
+                type="button"
+                onClick={() => setAdding(false)}
+                className="px-3 py-1.5 chrome-mono text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+              >
+                Cancel
+              </button>
             </div>
           </form>
         )}
 
-        <div className="pt-2 border-t border-black/[0.06] flex items-center gap-2 chrome-mono text-[11px]">
+        {/* Footer: stats + + Role button (admin only) */}
+        <div className="mt-auto pt-3 border-t border-black/[0.06] flex items-center gap-2 chrome-mono text-[11px]">
           <span className="text-[var(--muted-foreground)]">Filled</span>
           <span className="tabular-nums font-semibold">
             {filled}/{roles.length}
@@ -248,9 +249,9 @@ export function EditableUnitCard({
           {isAdmin && !adding && (
             <button
               onClick={() => setAdding(true)}
-              className="ml-auto chrome-mono text-[11px] text-[var(--raid-blue-deep)] hover:bg-[var(--raid-blue)]/10 px-2 py-0.5 rounded"
+              className="ml-auto chrome-mono text-[11px] px-3 py-1 rounded bg-[var(--raid-blue)]/10 text-[var(--raid-blue-deep)] hover:bg-[var(--raid-blue)]/20 transition font-semibold"
             >
-              + Role
+              + Add role
             </button>
           )}
         </div>

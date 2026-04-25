@@ -24,7 +24,7 @@ type Props = {
 export function EditableRoleCard({ role, incumbent, pending, isAdmin }: Props) {
   const [editing, setEditing] = useState(false);
 
-  const wrapperClass = `rounded-md px-3 py-2 ${
+  const wrapperClass = `group rounded-md px-3 py-2 ${
     role.isHead ? "bg-[var(--raid-blue-deep)]/[0.04]" : "bg-black/[0.02]"
   }`;
 
@@ -136,56 +136,58 @@ export function EditableRoleCard({ role, incumbent, pending, isAdmin }: Props) {
             Unfilled
           </span>
         )}
-        {isAdmin && (
-          <span className="ml-auto flex gap-0.5">
-            <button
-              onClick={() => setEditing(true)}
-              className="chrome-mono text-[10px] text-[var(--muted-foreground)] hover:text-[var(--raid-blue-deep)] px-1.5"
-              title="Rename / edit"
-            >
-              edit
-            </button>
-            <form action={toggleRoleVacancy} className="inline">
-              <input type="hidden" name="id" value={role.id} />
-              <input
-                type="hidden"
-                name="isVacant"
-                value={String(role.isVacant)}
-              />
-              <button
-                type="submit"
-                className="chrome-mono text-[10px] text-[var(--muted-foreground)] hover:text-[var(--raid-blue-deep)] px-1.5"
-                title={role.isVacant ? "Mark filled" : "Mark vacant"}
-              >
-                {role.isVacant ? "fill" : "vacate"}
-              </button>
-            </form>
-            <form
-              action={async (fd) => {
-                if (
-                  !confirm(`Delete role "${role.title}"? This cannot be undone.`)
-                )
-                  return;
-                try {
-                  await deleteRole(fd);
-                } catch (e) {
-                  alert((e as Error).message);
-                }
-              }}
-              className="inline"
-            >
-              <input type="hidden" name="id" value={role.id} />
-              <button
-                type="submit"
-                className="chrome-mono text-[10px] text-[#B33] hover:text-[#811] px-1.5"
-                title="Delete role"
-              >
-                ×
-              </button>
-            </form>
-          </span>
-        )}
       </div>
+
+      {/* Admin row — visible icons, never hidden behind hover */}
+      {isAdmin && (
+        <div className="mt-2 -mx-1 flex items-center gap-1 pt-2 border-t border-dashed border-black/[0.06]">
+          <button
+            onClick={() => setEditing(true)}
+            className="chrome-mono text-[10px] px-2 py-1 rounded text-[var(--raid-blue-deep)] hover:bg-[var(--raid-blue)]/10 transition"
+            title="Rename / edit role"
+          >
+            Edit
+          </button>
+          <form action={toggleRoleVacancy} className="inline">
+            <input type="hidden" name="id" value={role.id} />
+            <input
+              type="hidden"
+              name="isVacant"
+              value={String(role.isVacant)}
+            />
+            <button
+              type="submit"
+              className="chrome-mono text-[10px] px-2 py-1 rounded text-[var(--muted-foreground)] hover:bg-black/[0.04] transition"
+              title={role.isVacant ? "Mark filled" : "Mark vacant"}
+            >
+              {role.isVacant ? "Mark filled" : "Mark vacant"}
+            </button>
+          </form>
+          <form
+            action={async (fd) => {
+              if (
+                !confirm(`Delete role "${role.title}"? This cannot be undone.`)
+              )
+                return;
+              try {
+                await deleteRole(fd);
+              } catch (e) {
+                alert((e as Error).message);
+              }
+            }}
+            className="ml-auto inline"
+          >
+            <input type="hidden" name="id" value={role.id} />
+            <button
+              type="submit"
+              className="chrome-mono text-[10px] px-2 py-1 rounded text-[#B33] hover:bg-red-50 transition"
+              title="Delete role"
+            >
+              Delete
+            </button>
+          </form>
+        </div>
+      )}
     </div>
   );
 }

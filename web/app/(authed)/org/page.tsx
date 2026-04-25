@@ -42,7 +42,20 @@ export default async function OrgPage() {
         <p className="text-[15px] text-[var(--muted-foreground)] mt-1 max-w-2xl">
           The whole tree at a glance. Click any role to see incumbents and who is
           queued to come in.
-          {admin && " Branches and roles are editable inline."}
+          {admin && (
+            <span>
+              {" "}
+              Edit branches and roles inline — hover any card for{" "}
+              <code className="chrome-mono text-[12px] bg-black/[0.04] px-1 rounded">
+                edit
+              </code>{" "}
+              /{" "}
+              <code className="chrome-mono text-[12px] bg-black/[0.04] px-1 rounded">
+                ×
+              </code>{" "}
+              controls.
+            </span>
+          )}
         </p>
       </header>
 
@@ -68,7 +81,7 @@ export default async function OrgPage() {
       ))}
 
       {admin && root && (
-        <div className="pt-4">
+        <div className="pt-2">
           <AddBranchButton parentUnitId={root.id} />
         </div>
       )}
@@ -114,7 +127,8 @@ function UnitTreeView({
   const children = root.children;
 
   return (
-    <div className="relative">
+    <div className="space-y-4">
+      {/* L1 root, centred */}
       <div className="flex justify-center">
         <EditableUnitCard
           unit={root}
@@ -127,65 +141,36 @@ function UnitTreeView({
         />
       </div>
 
+      {/* L2 branches — wrapping auto-fill grid, consistent card width */}
       {children.length > 0 && (
-        <div className="relative h-10 my-2">
-          <svg
-            className="absolute inset-0 w-full h-full"
-            preserveAspectRatio="none"
-            viewBox="0 0 100 40"
+        <div>
+          <div className="text-center mb-3">
+            <span className="overline text-[var(--muted-foreground)]">
+              {children.length} branch{children.length === 1 ? "" : "es"}
+            </span>
+            <div
+              className="mx-auto w-px h-4 bg-[var(--raid-blue)]/30 mt-1"
+              aria-hidden
+            />
+          </div>
+          <div
+            className="grid gap-4"
+            style={{
+              gridTemplateColumns: "repeat(auto-fill, minmax(300px, 1fr))",
+            }}
           >
-            <line
-              x1="50"
-              y1="0"
-              x2="50"
-              y2="14"
-              stroke="var(--raid-blue)"
-              strokeWidth="0.4"
-            />
-            <line
-              x1={50 - 50 / Math.max(children.length, 1) + 50 / Math.max(children.length, 1) / 2}
-              y1="14"
-              x2={50 + 50 / Math.max(children.length, 1) - 50 / Math.max(children.length, 1) / 2}
-              y2="14"
-              stroke="var(--raid-blue)"
-              strokeWidth="0.4"
-            />
-            {children.map((_, i) => {
-              const cx = ((i + 0.5) / children.length) * 100;
-              return (
-                <line
-                  key={i}
-                  x1={cx}
-                  y1="14"
-                  x2={cx}
-                  y2="40"
-                  stroke="var(--raid-blue)"
-                  strokeWidth="0.4"
-                />
-              );
-            })}
-          </svg>
-        </div>
-      )}
-
-      {children.length > 0 && (
-        <div
-          className="grid gap-4"
-          style={{
-            gridTemplateColumns: `repeat(${children.length}, minmax(220px, 1fr))`,
-          }}
-        >
-          {children.map((child) => (
-            <EditableUnitCard
-              key={child.id}
-              unit={child}
-              roles={child.roles}
-              incumbents={incumbents}
-              pendingByRole={pendingByRole}
-              tone="L2"
-              isAdmin={isAdmin}
-            />
-          ))}
+            {children.map((child) => (
+              <EditableUnitCard
+                key={child.id}
+                unit={child}
+                roles={child.roles}
+                incumbents={incumbents}
+                pendingByRole={pendingByRole}
+                tone="L2"
+                isAdmin={isAdmin}
+              />
+            ))}
+          </div>
         </div>
       )}
     </div>

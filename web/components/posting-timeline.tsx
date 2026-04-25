@@ -4,9 +4,12 @@ import type { PostingWithRelations } from "@/lib/queries";
 
 type Mode = "individual" | "role";
 
-const today = new Date();
-const DEFAULT_START = new Date(today.getFullYear() - 2, 0, 1);
-const DEFAULT_END = new Date(today.getFullYear() + 2, 11, 31);
+// Fixed 4-year window centred on today: today − 2y … today + 2y.
+// Postings that extend beyond the window are clipped at the window edge with
+// a directional chevron (« or »), and postings entirely outside the window are
+// summarised in compact text rows above / below the bar timeline.
+const WINDOW_YEARS_BACK = 2;
+const WINDOW_YEARS_FORWARD = 2;
 
 function parseDate(d: string | null, fallback: Date): Date {
   return d ? new Date(d) : fallback;
@@ -15,7 +18,10 @@ function parseDate(d: string | null, fallback: Date): Date {
 function pctBetween(d: Date, start: Date, end: Date): number {
   const total = end.getTime() - start.getTime();
   if (total <= 0) return 0;
-  return Math.max(0, Math.min(100, ((d.getTime() - start.getTime()) / total) * 100));
+  return Math.max(
+    0,
+    Math.min(100, ((d.getTime() - start.getTime()) / total) * 100),
+  );
 }
 
 const barColors: Record<PostingWithRelations["status"], string> = {
@@ -30,6 +36,10 @@ const barText: Record<PostingWithRelations["status"], string> = {
   Planned: "#FFFFFF",
   Candidate: "#633806",
 };
+
+function fmt(d: string | null): string {
+  return d ?? "?";
+}
 
 export function PostingTimeline({
   postings,
@@ -46,63 +56,130 @@ export function PostingTimeline({
     );
   }
 
-  let minDate = DEFAULT_START;
-  let maxDate = DEFAULT_END;
-  for (const p of postings) {
-    if (p.startDate) {
-      const d = new Date(p.startDate);
-      if (d < minDate) minDate = d;
-    }
-    if (p.endDate) {
-      const d = new Date(p.endDate);
-      if (d > maxDate) maxDate = d;
+  const today = new Date();
+  const windowStart = new Date(
+    today.getFullYear() - WINDOW_YEARS_BACK,
+    today.getMonth(),
+    today.getDate(),
+  );
+  const windowEnd = new Date(
+    today.getFullYear() + WINDOW_YEARS_FORWARD,
+    today.getMonth(),
+    today.getDate(),
+  );
+
+  // Year + quarter ticks inside the window.
+  const yearTicks: { date: Date; year: number }[] = [];
+  const quarterTicks: Date[] = [];
+  for (
+    let y = windowStart.getFullYear();
+    y <= windowEnd.getFullYear() + 1;
+    y++
+  ) {
+    for (let q = 0; q < 4; q++) {
+      const m = q * 3;
+      const d = new Date(y, m, 1);
+      if (d < windowStart || d > windowEnd) continue;
+      if (m === 0) yearTicks.push({ date: d, year: y });
+      else quarterTicks.push(d);
     }
   }
 
-  const todayPct = pctBetween(today, minDate, maxDate);
-  const startYear = minDate.getFullYear();
-  const endYear = maxDate.getFullYear();
-  const years: number[] = [];
-  for (let y = startYear; y <= endYear; y++) years.push(y);
+  const todayPct = pctBetween(today, windowStart, windowEnd);
+
+  // Partition postings: in-window (rendered as bars), entirely earlier, entirely later.
+  type Categorised =
+    | { kind: "dateless"; posting: PostingWithRelations }
+    | { kind: "in-window"; posting: PostingWithRelations; start: Date; end: Date }
+    | { kind: "earlier"; posting: PostingWithRelations }
+    | { kind: "later"; posting: PostingWithRelations };
+
+  const items: Categorised[] = postings.map((p) => {
+    if (!p.startDate && p.status === "Candidate") {
+      return { kind: "dateless", posting: p };
+    }
+    const start = parseDate(p.startDate, today);
+    const end = parseDate(p.endDate, start);
+    if (end < windowStart) return { kind: "earlier", posting: p };
+    if (start > windowEnd) return { kind: "later", posting: p };
+    return { kind: "in-window", posting: p, start, end };
+  });
+
+  const earlier = items.filter((i) => i.kind === "earlier");
+  const later = items.filter((i) => i.kind === "later");
+  const visible = items.filter(
+    (i) => i.kind === "in-window" || i.kind === "dateless",
+  );
 
   return (
     <div className="space-y-3">
-      <div className="relative h-5 border-b border-black/10">
-        {years.map((y) => {
-          const pct = pctBetween(new Date(y, 0, 1), minDate, maxDate);
+      {earlier.length > 0 && (
+        <OutOfWindowList
+          label={`Earlier postings (${earlier.length})`}
+          postings={earlier.map((e) => e.posting)}
+          mode={mode}
+        />
+      )}
+
+      {/* Year axis */}
+      <div className="relative h-5">
+        {yearTicks.map((t) => {
+          const pct = pctBetween(t.date, windowStart, windowEnd);
           return (
             <div
-              key={y}
-              className="absolute top-0 chrome-mono text-[var(--muted-foreground)] -translate-x-1/2"
-              style={{ left: `${pct}%`, fontSize: 10 }}
+              key={t.year}
+              className="absolute top-0 chrome-mono text-[var(--foreground)] -translate-x-1/2 font-medium"
+              style={{ left: `${pct}%`, fontSize: 11 }}
             >
-              {y}
+              {t.year}
             </div>
           );
         })}
       </div>
 
       <div className="relative">
+        {/* Quarter dotted lines */}
+        {quarterTicks.map((d, i) => {
+          const pct = pctBetween(d, windowStart, windowEnd);
+          return (
+            <div
+              key={i}
+              className="absolute top-0 bottom-0 border-l border-dotted border-black/15 pointer-events-none"
+              style={{ left: `${pct}%` }}
+              aria-hidden
+            />
+          );
+        })}
+
+        {/* Year solid lines */}
+        {yearTicks.map((t) => {
+          const pct = pctBetween(t.date, windowStart, windowEnd);
+          return (
+            <div
+              key={`y-${t.year}`}
+              className="absolute top-0 bottom-0 border-l border-black/15 pointer-events-none"
+              style={{ left: `${pct}%` }}
+              aria-hidden
+            />
+          );
+        })}
+
+        {/* Today marker */}
         <div
           className="absolute top-0 bottom-0 w-px bg-[var(--raid-coral)] z-10"
           style={{ left: `${todayPct}%` }}
           aria-label="Today"
         />
         <div
-          className="absolute top-0 chrome-mono text-[var(--raid-coral)] -translate-x-1/2 -translate-y-full pb-1"
+          className="absolute top-0 chrome-mono text-[var(--raid-coral)] -translate-x-1/2 -translate-y-full pb-1 z-10"
           style={{ left: `${todayPct}%`, fontSize: 9 }}
         >
           NOW
         </div>
 
-        <ul className="space-y-2">
-          {postings.map((p) => {
-            const start = parseDate(p.startDate, today);
-            const end = parseDate(p.endDate, start);
-            const leftPct = pctBetween(start, minDate, maxDate);
-            const rightPct = pctBetween(end, minDate, maxDate);
-            const widthPct = Math.max(rightPct - leftPct, 1.5);
-
+        <ul className="space-y-2 relative">
+          {visible.map((item) => {
+            const p = item.posting;
             const label =
               mode === "individual"
                 ? `${p.role.title} · ${p.role.unit?.name ?? p.role.externalUnit ?? "External"}`
@@ -112,12 +189,9 @@ export function PostingTimeline({
                 ? `/roles/${p.role.id}`
                 : `/individuals/${p.individual.id}`;
 
-            const datelessCandidate =
-              !p.startDate && p.status === "Candidate";
-
-            return (
-              <li key={p.id} className="relative h-7">
-                {datelessCandidate ? (
+            if (item.kind === "dateless") {
+              return (
+                <li key={p.id} className="relative h-7">
                   <div
                     className="absolute inset-y-0 left-0 right-0 flex items-center gap-2 text-xs px-2 rounded"
                     style={{
@@ -137,27 +211,111 @@ export function PostingTimeline({
                       Dates TBD
                     </span>
                   </div>
-                ) : (
-                  <div
-                    className="absolute inset-y-0 rounded flex items-center gap-2 px-2 text-xs"
-                    style={{
-                      left: `${leftPct}%`,
-                      width: `${widthPct}%`,
-                      background: barColors[p.status],
-                      color: barText[p.status],
-                    }}
-                    title={`${p.status}: ${p.startDate ?? "?"} — ${p.endDate ?? "?"}`}
+                </li>
+              );
+            }
+
+            // in-window: clip start/end to window with directional chevrons
+            const { start, end } = item;
+            const startsBeforeWindow = start < windowStart;
+            const endsAfterWindow = end > windowEnd;
+            const clippedStart = startsBeforeWindow ? windowStart : start;
+            const clippedEnd = endsAfterWindow ? windowEnd : end;
+            const leftPct = pctBetween(clippedStart, windowStart, windowEnd);
+            const rightPct = pctBetween(clippedEnd, windowStart, windowEnd);
+            const widthPct = Math.max(rightPct - leftPct, 1.5);
+
+            return (
+              <li key={p.id} className="relative h-7">
+                <div
+                  className="absolute inset-y-0 flex items-center gap-1.5 px-2 text-xs overflow-hidden"
+                  style={{
+                    left: `${leftPct}%`,
+                    width: `${widthPct}%`,
+                    background: barColors[p.status],
+                    color: barText[p.status],
+                    borderTopLeftRadius: startsBeforeWindow ? 0 : 6,
+                    borderBottomLeftRadius: startsBeforeWindow ? 0 : 6,
+                    borderTopRightRadius: endsAfterWindow ? 0 : 6,
+                    borderBottomRightRadius: endsAfterWindow ? 0 : 6,
+                  }}
+                  title={`${p.status}: ${fmt(p.startDate)} → ${fmt(p.endDate)}`}
+                >
+                  {startsBeforeWindow && (
+                    <span
+                      aria-hidden
+                      className="font-bold flex-shrink-0"
+                      title={`Started ${p.startDate ?? "earlier"}`}
+                    >
+                      «
+                    </span>
+                  )}
+                  <Link
+                    href={href}
+                    className="truncate hover:underline font-medium"
                   >
-                    <Link href={href} className="truncate hover:underline font-medium">
-                      {label}
-                    </Link>
-                  </div>
-                )}
+                    {label}
+                  </Link>
+                  {endsAfterWindow && (
+                    <span
+                      aria-hidden
+                      className="font-bold flex-shrink-0 ml-auto"
+                      title={`Ends ${p.endDate ?? "later"}`}
+                    >
+                      »
+                    </span>
+                  )}
+                </div>
               </li>
             );
           })}
         </ul>
       </div>
+
+      {later.length > 0 && (
+        <OutOfWindowList
+          label={`Later postings (${later.length})`}
+          postings={later.map((l) => l.posting)}
+          mode={mode}
+        />
+      )}
+    </div>
+  );
+}
+
+function OutOfWindowList({
+  label,
+  postings,
+  mode,
+}: {
+  label: string;
+  postings: PostingWithRelations[];
+  mode: Mode;
+}) {
+  return (
+    <div className="text-xs flex flex-wrap items-center gap-x-3 gap-y-1.5 px-2 py-1.5 bg-black/[0.02] rounded">
+      <span className="overline">{label}</span>
+      {postings.map((p) => {
+        const text =
+          mode === "individual"
+            ? `${p.role.title} · ${p.role.unit?.name ?? p.role.externalUnit ?? "External"}`
+            : p.individual.name;
+        const href =
+          mode === "individual"
+            ? `/roles/${p.role.id}`
+            : `/individuals/${p.individual.id}`;
+        return (
+          <span key={p.id} className="inline-flex items-baseline gap-1.5">
+            <StatusBadge status={p.status} />
+            <Link href={href} className="hover:underline">
+              {text}
+            </Link>
+            <span className="chrome-mono text-[10px] text-[var(--muted-foreground)]">
+              {fmt(p.startDate)} → {fmt(p.endDate)}
+            </span>
+          </span>
+        );
+      })}
     </div>
   );
 }

@@ -5,6 +5,7 @@ import {
   getAllUnits,
   getCurrentIncumbentsByRole,
   getAllPostings,
+  getAllIndividuals,
 } from "@/lib/queries";
 import { buildUnitTree, type UnitNode } from "@/lib/hierarchy";
 import { RAiD } from "@/components/raid";
@@ -13,14 +14,22 @@ import { EditableUnitCard } from "./editable-unit-card";
 import { AddBranchButton } from "./add-branch";
 
 export default async function OrgPage() {
-  const [units, roles, postings, admin] = await Promise.all([
+  const [units, roles, postings, individuals, admin] = await Promise.all([
     getAllUnits(),
     getAllRoles(),
     getAllPostings(),
+    getAllIndividuals(),
     isAdmin(),
   ]);
   const incumbents = await getCurrentIncumbentsByRole(roles.map((r) => r.id));
   const tree = buildUnitTree(units, roles);
+
+  const individualOptions = individuals.map((i) => ({
+    id: i.id,
+    name: i.name,
+    rank: i.rank,
+    isExternal: i.isExternal,
+  }));
 
   const pendingByRole = new Map<number, number>();
   for (const p of postings) {
@@ -67,6 +76,7 @@ export default async function OrgPage() {
           incumbents={incumbents}
           pendingByRole={pendingByRole}
           isAdmin={admin}
+          individuals={individualOptions}
         />
       )}
 
@@ -77,6 +87,7 @@ export default async function OrgPage() {
           incumbents={incumbents}
           pendingByRole={pendingByRole}
           isAdmin={admin}
+          individuals={individualOptions}
         />
       ))}
 
@@ -118,11 +129,18 @@ function UnitTreeView({
   incumbents,
   pendingByRole,
   isAdmin,
+  individuals,
 }: {
   root: UnitNode;
   incumbents: Map<number, import("@/lib/db/schema").Individual>;
   pendingByRole: Map<number, number>;
   isAdmin: boolean;
+  individuals: {
+    id: number;
+    name: string;
+    rank: string | null;
+    isExternal: boolean;
+  }[];
 }) {
   const children = root.children;
 
@@ -138,6 +156,7 @@ function UnitTreeView({
           tone="L1"
           maxWidth={420}
           isAdmin={isAdmin}
+          individuals={individuals}
         />
       </div>
 
@@ -168,6 +187,7 @@ function UnitTreeView({
                 pendingByRole={pendingByRole}
                 tone="L2"
                 isAdmin={isAdmin}
+                individuals={individuals}
               />
             ))}
           </div>

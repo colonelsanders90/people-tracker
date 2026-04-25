@@ -1,10 +1,8 @@
 export const dynamic = "force-dynamic";
 
 import { getAllIndividuals, getAllPostings } from "@/lib/queries";
-import {
-  createIndividual,
-  deleteIndividual,
-} from "@/app/actions";
+import { createIndividual } from "@/app/actions";
+import { PersonRow } from "./person-row";
 
 export default async function PeopleAdminPage() {
   const [individuals, postings] = await Promise.all([
@@ -115,54 +113,18 @@ export default async function PeopleAdminPage() {
                 <Th>Employee ID</Th>
                 <Th>Type</Th>
                 <Th align="right">Postings</Th>
-                <Th align="right">Actions</Th>
+                <Th align="right">&nbsp;</Th>
               </tr>
             </thead>
             <tbody>
-              {individuals.map((i, idx) => {
-                const c = postingCount.get(i.id) ?? 0;
-                return (
-                  <tr
-                    key={i.id}
-                    className={`border-t border-black/[0.06] ${
-                      idx % 2 === 1 ? "bg-black/[0.015]" : ""
-                    }`}
-                  >
-                    <Td>{i.name}</Td>
-                    <Td muted>{i.rank ?? "—"}</Td>
-                    <Td muted>{i.specialisation ?? "—"}</Td>
-                    <Td muted>
-                      <span className="chrome-mono text-[11px]">
-                        {i.employeeId ?? "—"}
-                      </span>
-                    </Td>
-                    <Td muted>
-                      <span className="chrome-mono text-[11px]">
-                        {i.isExternal ? "external" : "internal"}
-                      </span>
-                    </Td>
-                    <Td align="right">
-                      <span className="chrome-mono tabular-nums">{c}</span>
-                    </Td>
-                    <Td align="right">
-                      <form action={deleteIndividual} className="inline">
-                        <input type="hidden" name="id" value={i.id} />
-                        <button
-                          type="submit"
-                          className="inline-flex items-center px-2.5 py-1 chrome-mono text-[11px] text-[#B33] hover:bg-red-50 rounded transition"
-                          title={
-                            c > 0
-                              ? `Has ${c} posting${c === 1 ? "" : "s"} — delete those first`
-                              : "Delete"
-                          }
-                        >
-                          Delete
-                        </button>
-                      </form>
-                    </Td>
-                  </tr>
-                );
-              })}
+              {individuals.map((i, idx) => (
+                <PersonRow
+                  key={i.id}
+                  person={i}
+                  postingCount={postingCount.get(i.id) ?? 0}
+                  zebra={idx % 2 === 1}
+                />
+              ))}
             </tbody>
           </table>
         </div>

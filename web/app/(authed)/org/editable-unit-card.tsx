@@ -12,6 +12,13 @@ type RoleSummary = {
   specialisation: string | null;
 };
 
+type IndividualOption = {
+  id: number;
+  name: string;
+  rank: string | null;
+  isExternal: boolean;
+};
+
 type Props = {
   unit: {
     id: number;
@@ -28,6 +35,7 @@ type Props = {
   tone: "L1" | "L2";
   maxWidth?: number;
   isAdmin: boolean;
+  individuals: IndividualOption[];
 };
 
 export function EditableUnitCard({
@@ -38,6 +46,7 @@ export function EditableUnitCard({
   tone,
   maxWidth,
   isAdmin,
+  individuals,
 }: Props) {
   const [renaming, setRenaming] = useState(false);
   const [adding, setAdding] = useState(false);
@@ -154,6 +163,7 @@ export function EditableUnitCard({
             incumbent={incumbents.get(head.id)}
             pending={pendingByRole.get(head.id) ?? 0}
             isAdmin={isAdmin}
+            individuals={individuals}
           />
         )}
 
@@ -166,6 +176,7 @@ export function EditableUnitCard({
                   incumbent={incumbents.get(r.id)}
                   pending={pendingByRole.get(r.id) ?? 0}
                   isAdmin={isAdmin}
+                  individuals={individuals}
                 />
               </li>
             ))}

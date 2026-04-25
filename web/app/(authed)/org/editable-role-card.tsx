@@ -6,7 +6,15 @@ import {
   updateRole,
   deleteRole,
   toggleRoleVacancy,
+  createPosting,
 } from "@/app/actions";
+
+type IndividualOption = {
+  id: number;
+  name: string;
+  rank: string | null;
+  isExternal: boolean;
+};
 
 type Props = {
   role: {
@@ -19,23 +27,30 @@ type Props = {
   incumbent: { id: number; name: string; rank: string | null } | undefined;
   pending: number;
   isAdmin: boolean;
+  individuals: IndividualOption[];
 };
 
-export function EditableRoleCard({ role, incumbent, pending, isAdmin }: Props) {
-  const [editing, setEditing] = useState(false);
+export function EditableRoleCard({
+  role,
+  incumbent,
+  pending,
+  isAdmin,
+  individuals,
+}: Props) {
+  const [mode, setMode] = useState<"display" | "edit" | "assign">("display");
 
   const wrapperClass = `group rounded-md px-3 py-2 ${
     role.isHead ? "bg-[var(--raid-blue-deep)]/[0.04]" : "bg-black/[0.02]"
   }`;
 
-  if (editing) {
+  if (mode === "edit") {
     return (
       <div className={wrapperClass}>
         <form
           action={async (fd) => {
             try {
               await updateRole(fd);
-              setEditing(false);
+              setMode("display");
             } catch (e) {
               alert((e as Error).message);
             }
@@ -74,7 +89,7 @@ export function EditableRoleCard({ role, incumbent, pending, isAdmin }: Props) {
               </button>
               <button
                 type="button"
-                onClick={() => setEditing(false)}
+                onClick={() => setMode("display")}
                 className="px-2 py-1 chrome-mono text-[10px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
               >
                 Cancel
@@ -138,11 +153,26 @@ export function EditableRoleCard({ role, incumbent, pending, isAdmin }: Props) {
         )}
       </div>
 
-      {/* Admin row — visible icons, never hidden behind hover */}
-      {isAdmin && (
-        <div className="mt-2 -mx-1 flex items-center gap-1 pt-2 border-t border-dashed border-black/[0.06]">
+      {mode === "assign" && (
+        <AssignForm
+          role={role}
+          individuals={individuals}
+          onClose={() => setMode("display")}
+        />
+      )}
+
+      {/* Admin row — always visible for admins */}
+      {isAdmin && mode === "display" && (
+        <div className="mt-2 -mx-1 flex flex-wrap items-center gap-1 pt-2 border-t border-dashed border-black/[0.06]">
           <button
-            onClick={() => setEditing(true)}
+            onClick={() => setMode("assign")}
+            className="chrome-mono text-[10px] px-2 py-1 rounded bg-[var(--raid-blue)]/10 text-[var(--raid-blue-deep)] hover:bg-[var(--raid-blue)]/20 transition font-semibold"
+            title="Assign a person to this role"
+          >
+            + Assign
+          </button>
+          <button
+            onClick={() => setMode("edit")}
             className="chrome-mono text-[10px] px-2 py-1 rounded text-[var(--raid-blue-deep)] hover:bg-[var(--raid-blue)]/10 transition"
             title="Rename / edit role"
           >
@@ -191,3 +221,125 @@ export function EditableRoleCard({ role, incumbent, pending, isAdmin }: Props) {
     </div>
   );
 }
+
+function AssignForm({
+  role,
+  individuals,
+  onClose,
+}: {
+  role: { id: number; title: string };
+  individuals: IndividualOption[];
+  onClose: () => void;
+}) {
+  const [externalIndividual, setExternalIndividual] = useState(false);
+
+  return (
+    <form
+      action={async (fd) => {
+        try {
+          await createPosting(fd);
+          onClose();
+        } catch (e) {
+          alert((e as Error).message);
+        }
+      }}
+      className="mt-3 pt-3 border-t border-dashed border-black/[0.08] space-y-2"
+    >
+      <input type="hidden" name="roleId" value={role.id} />
+
+      <div className="flex items-center justify-between">
+        <span className="overline">Assign to {role.title}</span>
+        <label className="chrome-mono text-[10px] flex items-center gap-1.5 text-[var(--muted-foreground)] cursor-pointer">
+          <input
+            type="checkbox"
+            name="externalIndividual"
+            checked={externalIndividual}
+            onChange={(e) => setExternalIndividual(e.target.checked)}
+            className="accent-[var(--raid-blue)]"
+          />
+          Outside RAiD
+        </label>
+      </div>
+
+      {externalIndividual ? (
+        <div className="grid grid-cols-[1fr_100px] gap-2">
+          <input
+            name="externalIndividualName"
+            placeholder="Full name (e.g. COL James Lim)"
+            required
+            className={inputClass}
+          />
+          <input
+            name="externalIndividualRank"
+            placeholder="Rank"
+            className={inputClass}
+          />
+        </div>
+      ) : (
+        <select name="individualId" required className={inputClass}>
+          <option value="">Select a person…</option>
+          {individuals.map((i) => (
+            <option key={i.id} value={i.id}>
+              {i.name}
+              {i.rank ? ` (${i.rank})` : ""}
+              {i.isExternal ? " · external" : ""}
+            </option>
+          ))}
+        </select>
+      )}
+
+      <div className="grid grid-cols-2 gap-2">
+        <select
+          name="status"
+          required
+          defaultValue="Candidate"
+          className={inputClass}
+        >
+          <option value="Candidate">Candidate</option>
+          <option value="Planned">Planned</option>
+          <option value="Current">Current</option>
+          <option value="Past">Past</option>
+        </select>
+        <input
+          name="startDate"
+          type="date"
+          placeholder="Start date"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="grid grid-cols-2 gap-2">
+        <input
+          name="endDate"
+          type="date"
+          placeholder="End date (optional)"
+          className={inputClass}
+        />
+        <input
+          name="notes"
+          placeholder="Notes (optional)"
+          className={inputClass}
+        />
+      </div>
+
+      <div className="flex gap-1 pt-1">
+        <button
+          type="submit"
+          className="px-3 py-1.5 chrome-mono text-[11px] bg-[var(--raid-blue)] text-white rounded hover:bg-[var(--raid-blue-deep)]"
+        >
+          Assign
+        </button>
+        <button
+          type="button"
+          onClick={onClose}
+          className="px-3 py-1.5 chrome-mono text-[11px] text-[var(--muted-foreground)] hover:text-[var(--foreground)]"
+        >
+          Cancel
+        </button>
+      </div>
+    </form>
+  );
+}
+
+const inputClass =
+  "w-full border border-black/15 rounded px-2 py-1.5 text-[12px] bg-white focus:outline-none focus:border-[var(--raid-blue)]";

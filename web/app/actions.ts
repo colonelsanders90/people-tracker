@@ -1,7 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
-import { eq, count } from "drizzle-orm";
+import { and, eq, ne, count } from "drizzle-orm";
 import {
   db,
   postings,
@@ -61,6 +61,74 @@ function level(value: FormDataEntryValue | null): Level {
   return v as Level;
 }
 
+function todayIso(): string {
+  return new Date().toISOString().slice(0, 10);
+}
+
+/**
+ * Validate posting dates by status. Returns an error string if invalid, null
+ * if OK. Past requires both dates; any pair must satisfy end >= start.
+ */
+function validatePostingDates(
+  s: PostingStatus,
+  startDate: string | null,
+  endDate: string | null,
+): string | null {
+  if (s === "Past" && (!startDate || !endDate)) {
+    return "Past postings require both a start and an end date.";
+  }
+  if (startDate && endDate && endDate < startDate) {
+    return "End date must be on or after the start date.";
+  }
+  return null;
+}
+
+/**
+ * Demote any other Current posting on this role to Past, with end_date set
+ * to the new posting's start (or today). Used by createPosting and
+ * updatePosting whenever a role gains a new Current incumbent.
+ */
+async function demoteOtherCurrents(
+  roleId: number,
+  handoffStartDate: string | null,
+  excludePostingId: number | null,
+): Promise<void> {
+  const handoffDate = handoffStartDate ?? todayIso();
+  const condition = excludePostingId
+    ? and(
+        eq(postings.roleId, roleId),
+        eq(postings.status, "Current"),
+        ne(postings.id, excludePostingId),
+      )
+    : and(eq(postings.roleId, roleId), eq(postings.status, "Current"));
+  await db
+    .update(postings)
+    .set({ status: "Past", endDate: handoffDate })
+    .where(condition);
+}
+
+/**
+ * Re-derive role.isVacant from "no Current posting on this role". Call after
+ * any posting create/update/delete that touches a role's Current state.
+ */
+async function syncRoleVacancy(
+  roleId: number,
+  excludePostingId: number | null = null,
+): Promise<void> {
+  const condition = excludePostingId
+    ? and(
+        eq(postings.roleId, roleId),
+        eq(postings.status, "Current"),
+        ne(postings.id, excludePostingId),
+      )
+    : and(eq(postings.roleId, roleId), eq(postings.status, "Current"));
+  const [{ c }] = await db
+    .select({ c: count() })
+    .from(postings)
+    .where(condition);
+  await db.update(roles).set({ isVacant: c === 0 }).where(eq(roles.id, roleId));
+}
+
 /**
  * Server Action result shape for actions that may fail in expected ways
  * (FK guards, referenced rows, etc). Returning a plain object preserves the
@@ -98,11 +166,21 @@ function fanoutPaths(...extra: string[]) {
  * External entities are created on-the-fly in the same transaction-ish
  * flow and reused on the resulting posting.
  */
-export async function createPosting(formData: FormData) {
+export async function createPosting(
+  formData: FormData,
+): Promise<ActionResult> {
   await requireAdmin();
 
   const externalIndividual = bool(formData.get("externalIndividual"));
   const externalRole = bool(formData.get("externalRole"));
+  const newStatus = status(formData.get("status"));
+  const startDate = txt(formData.get("startDate"));
+  const endDate =
+    newStatus === "Current" ? null : txt(formData.get("endDate"));
+  const notes = txt(formData.get("notes"));
+
+  const dateError = validatePostingDates(newStatus, startDate, endDate);
+  if (dateError) return { ok: false, error: dateError };
 
   // Resolve / create individual
   let individualId: number;
@@ -116,7 +194,7 @@ export async function createPosting(formData: FormData) {
     individualId = created.id;
   } else {
     const id = num(formData.get("individualId"));
-    if (id == null) throw new Error("Individual is required");
+    if (id == null) return { ok: false, error: "Individual is required" };
     individualId = id;
   }
 
@@ -138,20 +216,86 @@ export async function createPosting(formData: FormData) {
     roleId = created.id;
   } else {
     const id = num(formData.get("roleId"));
-    if (id == null) throw new Error("Role is required");
+    if (id == null) return { ok: false, error: "Role is required" };
     roleId = id;
+  }
+
+  // Single-Current invariant: if creating a Current, demote any other Current
+  // posting on the same role to Past with a clean handoff date.
+  if (newStatus === "Current") {
+    await demoteOtherCurrents(roleId, startDate, null);
   }
 
   await db.insert(postings).values({
     individualId,
     roleId,
-    status: status(formData.get("status")),
-    startDate: txt(formData.get("startDate")),
-    endDate: txt(formData.get("endDate")),
-    notes: txt(formData.get("notes")),
+    status: newStatus,
+    startDate,
+    endDate,
+    notes,
   });
 
+  // Re-derive isVacant from posting state.
+  await syncRoleVacancy(roleId);
+
   fanoutPaths(`/individuals/${individualId}`, `/roles/${roleId}`);
+  return { ok: true };
+}
+
+/**
+ * Update an existing posting's status / dates / notes.
+ * The role and individual cannot be changed — to move a posting, delete and
+ * recreate. Status transitions to/from "Current" trigger the same single-
+ * Current and isVacant-sync invariants as createPosting.
+ */
+export async function updatePosting(
+  formData: FormData,
+): Promise<ActionResult> {
+  await requireAdmin();
+  const id = num(formData.get("id"));
+  if (id == null) return { ok: false, error: "id is required" };
+
+  const [existing] = await db
+    .select()
+    .from(postings)
+    .where(eq(postings.id, id))
+    .limit(1);
+  if (!existing) return { ok: false, error: "Posting not found" };
+
+  const newStatus = status(formData.get("status"));
+  const newStartDate = txt(formData.get("startDate"));
+  const newEndDate =
+    newStatus === "Current" ? null : txt(formData.get("endDate"));
+  const newNotes = txt(formData.get("notes"));
+
+  const dateError = validatePostingDates(newStatus, newStartDate, newEndDate);
+  if (dateError) return { ok: false, error: dateError };
+
+  // Transitioning INTO Current → demote any other Current on the same role
+  if (newStatus === "Current" && existing.status !== "Current") {
+    await demoteOtherCurrents(existing.roleId, newStartDate, id);
+  }
+
+  await db
+    .update(postings)
+    .set({
+      status: newStatus,
+      startDate: newStartDate,
+      endDate: newEndDate,
+      notes: newNotes,
+    })
+    .where(eq(postings.id, id));
+
+  // Re-derive isVacant after any status change
+  if (existing.status !== newStatus) {
+    await syncRoleVacancy(existing.roleId);
+  }
+
+  fanoutPaths(
+    `/individuals/${existing.individualId}`,
+    `/roles/${existing.roleId}`,
+  );
+  return { ok: true };
 }
 
 export async function deletePosting(formData: FormData) {
@@ -164,6 +308,12 @@ export async function deletePosting(formData: FormData) {
   )[0];
 
   await db.delete(postings).where(eq(postings.id, id));
+
+  // If the deleted posting was the role's Current, the role may have just
+  // gone vacant. Re-derive.
+  if (existing && existing.status === "Current") {
+    await syncRoleVacancy(existing.roleId);
+  }
 
   fanoutPaths(
     ...(existing
@@ -241,15 +391,35 @@ export async function deleteUnit(formData: FormData): Promise<ActionResult> {
 // Roles
 // ---------------------------------------------------------------------------
 
-export async function createRole(formData: FormData) {
+export async function createRole(
+  formData: FormData,
+): Promise<ActionResult> {
   await requireAdmin();
   const title = reqTxt(formData.get("title"), "Role title");
   const unitId = num(formData.get("unitId"));
-  const lvl = level(formData.get("level"));
+  let lvl = level(formData.get("level"));
   const isHead = bool(formData.get("isHead"));
   const specialisation = txt(formData.get("specialisation"));
+  const establishmentRank = txt(formData.get("establishmentRank"));
+  const establishmentVocation = txt(formData.get("establishmentVocation"));
 
-  if (unitId == null) throw new Error("unitId is required");
+  if (unitId == null) return { ok: false, error: "unitId is required" };
+
+  // Head invariants: head's level must match its unit, and a unit can have
+  // at most one head — demote any existing head before inserting the new one.
+  if (isHead) {
+    const [parent] = await db
+      .select()
+      .from(units)
+      .where(eq(units.id, unitId))
+      .limit(1);
+    if (!parent) return { ok: false, error: "Unit not found" };
+    lvl = parent.level;
+    await db
+      .update(roles)
+      .set({ isHead: false })
+      .where(and(eq(roles.unitId, unitId), eq(roles.isHead, true)));
+  }
 
   await db.insert(roles).values({
     title,
@@ -257,26 +427,72 @@ export async function createRole(formData: FormData) {
     level: lvl,
     isHead,
     specialisation,
+    establishmentRank,
+    establishmentVocation,
   });
 
   fanoutPaths();
+  return { ok: true };
 }
 
-export async function updateRole(formData: FormData) {
+export async function updateRole(
+  formData: FormData,
+): Promise<ActionResult> {
   await requireAdmin();
   const id = num(formData.get("id"));
-  if (id == null) throw new Error("id is required");
+  if (id == null) return { ok: false, error: "id is required" };
 
-  await db
-    .update(roles)
-    .set({
-      title: reqTxt(formData.get("title"), "Role title"),
-      isHead: bool(formData.get("isHead")),
-      specialisation: txt(formData.get("specialisation")),
-    })
-    .where(eq(roles.id, id));
+  const [existing] = await db
+    .select()
+    .from(roles)
+    .where(eq(roles.id, id))
+    .limit(1);
+  if (!existing) return { ok: false, error: "Role not found" };
+
+  const isHead = bool(formData.get("isHead"));
+
+  const updates: {
+    title: string;
+    isHead: boolean;
+    specialisation: string | null;
+    establishmentRank: string | null;
+    establishmentVocation: string | null;
+    level?: Level;
+  } = {
+    title: reqTxt(formData.get("title"), "Role title"),
+    isHead,
+    specialisation: txt(formData.get("specialisation")),
+    establishmentRank: txt(formData.get("establishmentRank")),
+    establishmentVocation: txt(formData.get("establishmentVocation")),
+  };
+
+  // Head invariants: when promoting to head, snap level to unit's level and
+  // demote any existing head on the same unit.
+  if (isHead && existing.unitId != null) {
+    const [parent] = await db
+      .select()
+      .from(units)
+      .where(eq(units.id, existing.unitId))
+      .limit(1);
+    if (parent) {
+      updates.level = parent.level;
+      await db
+        .update(roles)
+        .set({ isHead: false })
+        .where(
+          and(
+            eq(roles.unitId, existing.unitId),
+            eq(roles.isHead, true),
+            ne(roles.id, id),
+          ),
+        );
+    }
+  }
+
+  await db.update(roles).set(updates).where(eq(roles.id, id));
 
   fanoutPaths(`/roles/${id}`);
+  return { ok: true };
 }
 
 export async function deleteRole(formData: FormData): Promise<ActionResult> {

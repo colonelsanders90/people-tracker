@@ -40,6 +40,10 @@ export const roles = pgTable("roles", {
   isHead: boolean("is_head").notNull().default(false),
   isExternal: boolean("is_external").notNull().default(false),
   externalUnit: text("external_unit"),
+  // Establishment profile — the role's pegged rank and vocation,
+  // e.g. rank "LTC" / vocation "AAO", rendered as "LTC/AAO" in UI.
+  establishmentRank: text("establishment_rank"),
+  establishmentVocation: text("establishment_vocation"),
   standardTenureMonths: integer("standard_tenure_months"),
   isVacant: boolean("is_vacant").notNull().default(false),
   specialisation: text("specialisation"),

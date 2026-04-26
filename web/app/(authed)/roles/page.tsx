@@ -102,6 +102,8 @@ export default async function RolesPage() {
       unitName: unit?.name ?? r.externalUnit ?? "—",
       isVacant: r.isVacant,
       isHead: r.isHead,
+      establishmentRank: r.establishmentRank,
+      establishmentVocation: r.establishmentVocation,
       current:
         currentPosting && currentIndividual
           ? {

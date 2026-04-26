@@ -5,7 +5,6 @@ import Link from "next/link";
 import {
   updateRole,
   deleteRole,
-  toggleRoleVacancy,
   createPosting,
 } from "@/app/actions";
 
@@ -23,12 +22,23 @@ type Props = {
     isHead: boolean;
     isVacant: boolean;
     specialisation: string | null;
+    establishmentRank: string | null;
+    establishmentVocation: string | null;
   };
   incumbent: { id: number; name: string; rank: string | null } | undefined;
   pending: number;
   isAdmin: boolean;
   individuals: IndividualOption[];
 };
+
+function formatEstablishment(
+  rank: string | null,
+  vocation: string | null,
+): string | null {
+  if (!rank && !vocation) return null;
+  if (rank && vocation) return `${rank}/${vocation}`;
+  return rank ?? vocation;
+}
 
 export function EditableRoleCard({
   role,
@@ -43,17 +53,22 @@ export function EditableRoleCard({
     role.isHead ? "bg-[var(--raid-blue-deep)]/[0.04]" : "bg-black/[0.02]"
   }`;
 
+  const establishment = formatEstablishment(
+    role.establishmentRank,
+    role.establishmentVocation,
+  );
+
   if (mode === "edit") {
     return (
       <div className={wrapperClass}>
         <form
           action={async (fd) => {
-            try {
-              await updateRole(fd);
-              setMode("display");
-            } catch (e) {
-              alert((e as Error).message);
+            const result = await updateRole(fd);
+            if (!result.ok) {
+              alert(result.error);
+              return;
             }
+            setMode("display");
           }}
           className="space-y-2"
         >
@@ -62,7 +77,28 @@ export function EditableRoleCard({
             name="title"
             defaultValue={role.title}
             required
+            placeholder="Role title"
             className="w-full border border-black/15 rounded px-2 py-1 text-[13px] bg-white"
+          />
+          <div className="grid grid-cols-2 gap-2">
+            <input
+              name="establishmentRank"
+              defaultValue={role.establishmentRank ?? ""}
+              placeholder="Rank (e.g. LTC, ME6)"
+              className="border border-black/15 rounded px-2 py-1 bg-white text-[12px]"
+            />
+            <input
+              name="establishmentVocation"
+              defaultValue={role.establishmentVocation ?? ""}
+              placeholder="Vocation (e.g. AAO, AFE)"
+              className="border border-black/15 rounded px-2 py-1 bg-white text-[12px]"
+            />
+          </div>
+          <input
+            name="specialisation"
+            defaultValue={role.specialisation ?? ""}
+            placeholder="Specialisation (free text)"
+            className="w-full border border-black/15 rounded px-2 py-1 bg-white text-[12px]"
           />
           <div className="flex flex-wrap items-center gap-3 chrome-mono text-[11px] text-[var(--muted-foreground)]">
             <label className="flex items-center gap-1.5 cursor-pointer">
@@ -74,12 +110,6 @@ export function EditableRoleCard({
               />
               Branch head
             </label>
-            <input
-              name="specialisation"
-              defaultValue={role.specialisation ?? ""}
-              placeholder="Specialisation"
-              className="border border-black/15 rounded px-2 py-1 bg-white text-[var(--foreground)] text-[12px] flex-1 min-w-[100px]"
-            />
             <div className="ml-auto flex gap-1">
               <button
                 type="submit"
@@ -103,7 +133,7 @@ export function EditableRoleCard({
 
   return (
     <div className={wrapperClass}>
-      <div className="flex items-baseline gap-2">
+      <div className="flex items-baseline gap-2 flex-wrap">
         <Link
           href={`/roles/${role.id}`}
           className={`hover:underline text-[13px] ${
@@ -114,6 +144,14 @@ export function EditableRoleCard({
         >
           {role.title}
         </Link>
+        {establishment && (
+          <span
+            className="chrome-mono text-[10px] px-1.5 py-0.5 rounded bg-black/[0.05] text-[var(--muted-foreground)]"
+            title="Establishment — Rank/Vocation"
+          >
+            {establishment}
+          </span>
+        )}
         {role.isVacant && (
           <span className="overline" style={{ color: "var(--raid-coral)" }}>
             Vacant
@@ -178,21 +216,6 @@ export function EditableRoleCard({
           >
             Edit
           </button>
-          <form action={toggleRoleVacancy} className="inline">
-            <input type="hidden" name="id" value={role.id} />
-            <input
-              type="hidden"
-              name="isVacant"
-              value={String(role.isVacant)}
-            />
-            <button
-              type="submit"
-              className="chrome-mono text-[10px] px-2 py-1 rounded text-[var(--muted-foreground)] hover:bg-black/[0.04] transition"
-              title={role.isVacant ? "Mark filled" : "Mark vacant"}
-            >
-              {role.isVacant ? "Mark filled" : "Mark vacant"}
-            </button>
-          </form>
           <form
             action={async (fd) => {
               if (
@@ -237,12 +260,12 @@ function AssignForm({
   return (
     <form
       action={async (fd) => {
-        try {
-          await createPosting(fd);
-          onClose();
-        } catch (e) {
-          alert((e as Error).message);
+        const result = await createPosting(fd);
+        if (!result.ok) {
+          alert(result.error);
+          return;
         }
+        onClose();
       }}
       className="mt-3 pt-3 border-t border-dashed border-black/[0.08] space-y-2"
     >
@@ -294,9 +317,7 @@ function AssignForm({
           name="status"
           required
           value={status}
-          onChange={(e) =>
-            setStatus(e.target.value as typeof status)
-          }
+          onChange={(e) => setStatus(e.target.value as typeof status)}
           className={inputClass}
         >
           <option value="Candidate">Candidate</option>
@@ -342,7 +363,7 @@ function AssignForm({
 
       <p className="chrome-mono text-[10px] text-[var(--muted-foreground)] leading-snug">
         {status === "Current"
-          ? "Currently on the job — no end date needed. Switch to Past when they move out."
+          ? "Currently on the job — no end date needed. Any existing Current incumbent will be moved to Past automatically."
           : status === "Past"
             ? "Historical posting — both start and end dates required."
             : "Forward-looking. End date is optional; if blank, the timeline projects the role's standard tenure."}

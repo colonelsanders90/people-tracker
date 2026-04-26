@@ -29,6 +29,8 @@ export type RoleMovementRow = {
   unitName: string;
   isVacant: boolean;
   isHead: boolean;
+  establishmentRank: string | null;
+  establishmentVocation: string | null;
   current: CurrentPosting | null;
   /** sorted ascending by startDate (earliest first), nulls last */
   incoming: IncomingPosting[];
@@ -52,6 +54,15 @@ const FILTERS: { key: FilterKey; label: string }[] = [
   { key: "incoming", label: "Has incoming" },
   { key: "all", label: "All roles" },
 ];
+
+function formatEstablishment(
+  rank: string | null,
+  vocation: string | null,
+): string | null {
+  if (!rank && !vocation) return null;
+  if (rank && vocation) return `${rank}/${vocation}`;
+  return rank ?? vocation;
+}
 
 function matchesFilter(row: RoleMovementRow, filter: FilterKey): boolean {
   switch (filter) {
@@ -99,19 +110,33 @@ export function MovementBoard({
       key: "title",
       header: "Role",
       sort: (r) => r.title.toLowerCase(),
-      cell: (r) => (
-        <span className="inline-flex items-baseline gap-2">
-          <Link
-            href={`/roles/${r.id}`}
-            className="font-medium hover:underline text-[var(--raid-blue-deep)]"
-          >
-            {r.title}
-          </Link>
-          <span className="chrome-mono text-[10px] text-[var(--muted-foreground)]">
-            {r.level}
+      cell: (r) => {
+        const est = formatEstablishment(
+          r.establishmentRank,
+          r.establishmentVocation,
+        );
+        return (
+          <span className="inline-flex items-baseline gap-2 flex-wrap">
+            <Link
+              href={`/roles/${r.id}`}
+              className="font-medium hover:underline text-[var(--raid-blue-deep)]"
+            >
+              {r.title}
+            </Link>
+            <span className="chrome-mono text-[10px] text-[var(--muted-foreground)]">
+              {r.level}
+            </span>
+            {est && (
+              <span
+                className="chrome-mono text-[10px] px-1.5 py-0.5 rounded bg-black/[0.05] text-[var(--muted-foreground)]"
+                title="Establishment — Rank/Vocation"
+              >
+                {est}
+              </span>
+            )}
           </span>
-        </span>
-      ),
+        );
+      },
     },
     {
       key: "unit",

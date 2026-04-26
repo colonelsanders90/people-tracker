@@ -60,6 +60,14 @@ export default async function RoleViewPage(props: PageProps<"/roles/[id]">) {
         <div className="flex flex-wrap gap-x-3 gap-y-1 chrome-mono text-[11px] text-[var(--muted-foreground)] mt-2">
           <span>{role.unit?.name ?? role.externalUnit ?? "External"}</span>
           <span>· {role.level}</span>
+          {(role.establishmentRank || role.establishmentVocation) && (
+            <span>
+              ·{" "}
+              {[role.establishmentRank, role.establishmentVocation]
+                .filter(Boolean)
+                .join("/")}
+            </span>
+          )}
           {role.isExternal && <span>· External</span>}
           {role.specialisation && <span>· {role.specialisation}</span>}
         </div>

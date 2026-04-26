@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useRef, useState } from "react";
+import type { ActionResult } from "@/app/actions";
 
 type IndividualOption = { id: number; name: string; rank: string | null };
 type RoleOption = {
@@ -15,7 +16,7 @@ export function PostingForm({
   individuals,
   roles,
 }: {
-  action: (formData: FormData) => Promise<void>;
+  action: (formData: FormData) => Promise<ActionResult>;
   individuals: IndividualOption[];
   roles: RoleOption[];
 }) {
@@ -25,9 +26,25 @@ export function PostingForm({
     "Candidate" | "Planned" | "Current" | "Past"
   >("Candidate");
   const showEndDate = status !== "Current";
+  const formRef = useRef<HTMLFormElement>(null);
 
   return (
-    <form action={action} className="grid md:grid-cols-2 gap-4">
+    <form
+      ref={formRef}
+      action={async (fd) => {
+        const result = await action(fd);
+        if (!result.ok) {
+          alert(result.error);
+          return;
+        }
+        // Reset on success so the form is ready for the next entry
+        formRef.current?.reset();
+        setExternalIndividual(false);
+        setExternalRole(false);
+        setStatus("Candidate");
+      }}
+      className="grid md:grid-cols-2 gap-4"
+    >
       {/* Individual */}
       <div className="space-y-1.5 md:col-span-2">
         <div className="flex items-center justify-between">

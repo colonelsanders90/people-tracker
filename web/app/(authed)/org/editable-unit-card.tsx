@@ -10,6 +10,8 @@ type RoleSummary = {
   isHead: boolean;
   isVacant: boolean;
   specialisation: string | null;
+  establishmentRank: string | null;
+  establishmentVocation: string | null;
 };
 
 type IndividualOption = {
@@ -190,16 +192,18 @@ export function EditableUnitCard({
         {isAdmin && adding && (
           <form
             action={async (fd) => {
-              try {
-                await createRole(fd);
-                setAdding(false);
-              } catch (e) {
-                alert((e as Error).message);
+              const result = await createRole(fd);
+              if (!result.ok) {
+                alert(result.error);
+                return;
               }
+              setAdding(false);
             }}
             className="space-y-2 pt-2 border-t border-black/[0.06]"
           >
             <input type="hidden" name="unitId" value={unit.id} />
+            {/* The server snaps level to the unit's level when isHead is
+                ticked, so this is just the default for non-head roles. */}
             <input
               type="hidden"
               name="level"
@@ -212,6 +216,23 @@ export function EditableUnitCard({
               placeholder="Role title (e.g. Software Engineer)"
               className="w-full border border-black/15 rounded px-2 py-1.5 text-[13px] bg-white"
             />
+            <div className="grid grid-cols-2 gap-2">
+              <input
+                name="establishmentRank"
+                placeholder="Rank (e.g. LTC, ME6)"
+                className="border border-black/15 rounded px-2 py-1 bg-white text-[12px]"
+              />
+              <input
+                name="establishmentVocation"
+                placeholder="Vocation (e.g. AAO, AFE)"
+                className="border border-black/15 rounded px-2 py-1 bg-white text-[12px]"
+              />
+            </div>
+            <input
+              name="specialisation"
+              placeholder="Specialisation (free text, optional)"
+              className="w-full border border-black/15 rounded px-2 py-1 bg-white text-[12px]"
+            />
             <div className="flex flex-wrap items-center gap-3 chrome-mono text-[11px] text-[var(--muted-foreground)]">
               <label className="flex items-center gap-1.5 cursor-pointer">
                 <input
@@ -221,11 +242,10 @@ export function EditableUnitCard({
                 />
                 Head role
               </label>
-              <input
-                name="specialisation"
-                placeholder="Specialisation"
-                className="border border-black/15 rounded px-2 py-1 bg-white text-[var(--foreground)] text-[12px] flex-1 min-w-[100px]"
-              />
+              <span className="text-[10px] opacity-70">
+                Head roles auto-set level to the {tone === "L1" ? "L1" : "L2"}{" "}
+                of this unit and replace any existing head.
+              </span>
             </div>
             <div className="flex gap-1">
               <button
